@@ -108,7 +108,13 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
       try {
         const [{ data: bData, error: bErr }, { data: cData, error: cErr }] = await Promise.all([
-          supabase.from("buildings").select("id,name,campus_slug").eq("campus_slug", campus).order("name"),
+          // A) FILTER OUT SYSTEM BUILDINGS
+          supabase
+            .from("buildings")
+            .select("id,name")
+            .eq("campus_slug", campus)
+            .eq("is_system", false)
+            .order("name"),
           supabase
             .from("categories")
             .select("id,name,is_high_value,is_sensitive")
@@ -252,14 +258,10 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       // 2) AI analysis (server-side decides category/sensitive/high_value)
       setIsAnalyzing(true);
 
-      // If your Edge Function uses DB categories internally, it only needs campus_slug + imageUrl.
-      // If it does NOT, you can also pass categories list:
-      // const categoryNames = categories.map(c => c.name);
       const { data, error } = await supabase.functions.invoke("analyze-image", {
         body: {
           imageUrl: publicUrl,
           campus_slug: campus,
-          // categories: categoryNames,
         },
       });
 
@@ -277,7 +279,9 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       const aiHighValue = data.is_high_value === true;
 
       // Fallback source: category table flags (in case AI function doesn’t return is_high_value)
-      const catFlags = nextCategory ? categoryFlagsFromName(nextCategory) : { isSensitive: false, isHighValue: false };
+      const catFlags = nextCategory
+        ? categoryFlagsFromName(nextCategory)
+        : { isSensitive: false, isHighValue: false };
 
       const sensitive = aiSensitive || catFlags.isSensitive;
       const is_high_value = aiHighValue || catFlags.isHighValue;
@@ -307,107 +311,108 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (isSubmitting) return;
+    e.preventDefault();
+    if (isSubmitting) return;
 
-  // Hard validations
-  if (!formData.description.trim()) return alert("Description is required.");
-  if (!formData.category.trim()) return alert("Category is required.");
-  if (!(lockedBuilding ? (building as string) : formData.building).trim()) return alert("Building is required.");
-  if (!formData.specific_location.trim()) return alert("Specific location is required.");
+    // Hard validations
+    if (!formData.description.trim()) return alert("Description is required.");
+    if (!formData.category.trim()) return alert("Category is required.");
+    if (!(lockedBuilding ? (building as string) : formData.building).trim()) return alert("Building is required.");
+    if (!formData.specific_location.trim()) return alert("Specific location is required.");
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    const buildingName = lockedBuilding ? (building as string) : formData.building.trim();
+    try {
+      const buildingName = lockedBuilding ? (building as string) : formData.building.trim();
 
-    // Ensure building exists in public.buildings (only when not locked)
-    if (!lockedBuilding) {
-  // Check DB (not client state)
-  const { data: existing, error: selOneErr } = await supabase
-    .from("buildings")
-    .select("id")
-    .eq("campus_slug", campus)
-    .eq("name", buildingName)
-    .maybeSingle();
-  if (selOneErr) throw selOneErr;
-  
-  // Insert only if missing
-  if (!existing) {
-    const { error: bErr } = await supabase
-      .from("buildings")
-      .upsert([{ name: buildingName, campus_slug: campus }], {
-        onConflict: "campus_slug,name",
+      // Ensure building exists in public.buildings (only when not locked)
+      if (!lockedBuilding) {
+        // Check DB (not client state)
+        const { data: existing, error: selOneErr } = await supabase
+          .from("buildings")
+          .select("id")
+          .eq("campus_slug", campus)
+          .eq("name", buildingName)
+          .maybeSingle();
+        if (selOneErr) throw selOneErr;
+
+        // Insert only if missing
+        if (!existing) {
+          // C) explicitly set is_system false on upsert
+          const { error: bErr } = await supabase.from("buildings").upsert(
+            [{ name: buildingName, campus_slug: campus, is_system: false }],
+            {
+              onConflict: "campus_slug,name",
+            }
+          );
+          if (bErr) throw bErr;
+        }
+
+        // B) Refresh list and keep filtering out system buildings
+        const { data: updatedBuildings, error: selErr } = await supabase
+          .from("buildings")
+          .select("id,name")
+          .eq("campus_slug", campus)
+          .eq("is_system", false)
+          .order("name");
+        if (selErr) throw selErr;
+
+        setBuildings((updatedBuildings ?? []) as BuildingRow[]);
+      }
+
+      // Insert the item
+      const payload = {
+        description: formData.description.trim(),
+        category: formData.category.trim(),
+        building: buildingName,
+        specific_location: formData.specific_location.trim(),
+        additional_notes: formData.additional_notes.trim() || null,
+        date_found: todayISODate(),
+        photo_url: formData.photo_url, // already null if sensitive
+        sensitive: formData.sensitive,
+        is_high_value: formData.is_high_value,
+        campus_slug: campus,
+        status: "available",
+      };
+
+      const { error } = await supabase.from("items").insert(payload);
+      if (error) throw error;
+
+      // Reset
+      const defaultCategory =
+        categories.find((c) => c.name === "Other / Unclassified")?.name || categories[0]?.name || "";
+
+      const defaultFlags = defaultCategory
+        ? categoryFlagsFromName(defaultCategory)
+        : { isSensitive: false, isHighValue: false };
+
+      setFormData({
+        description: "",
+        category: defaultCategory,
+        // keep the last-used building (best UX)
+        building: lockedBuilding ? (building as string) : buildingName,
+        specific_location: "",
+        additional_notes: "",
+        photo_url: null,
+        sensitive: defaultFlags.isSensitive,
+        is_high_value: defaultFlags.isHighValue,
       });
-    if (bErr) throw bErr;
-  }
-  
-  // Refresh list so dropdown shows it
-  const { data: updatedBuildings, error: selErr } = await supabase
-    .from("buildings")
-    .select("id,name,campus_slug")
-    .eq("campus_slug", campus)
-    .order("name");
-  if (selErr) throw selErr;
-  
-  setBuildings((updatedBuildings ?? []) as BuildingRow[]);
-}
 
-    // Insert the item
-    const payload = {
-      description: formData.description.trim(),
-      category: formData.category.trim(),
-      building: buildingName,
-      specific_location: formData.specific_location.trim(),
-      additional_notes: formData.additional_notes.trim() || null,
-      date_found: todayISODate(),
-      photo_url: formData.photo_url, // already null if sensitive
-      sensitive: formData.sensitive,
-      is_high_value: formData.is_high_value,
-      campus_slug: campus,
-      status: "available",
-    };
+      // Cleanup preview
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      setPhotoPreview("");
+      setUploadedPhotoPath("");
 
-    const { error } = await supabase.from("items").insert(payload);
-    if (error) throw error;
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
 
-    // Reset
-    const defaultCategory =
-      categories.find((c) => c.name === "Other / Unclassified")?.name ||
-      categories[0]?.name ||
-      "";
-
-    const defaultFlags = defaultCategory
-      ? categoryFlagsFromName(defaultCategory)
-      : { isSensitive: false, isHighValue: false };
-
-    setFormData({
-      description: "",
-      category: defaultCategory,
-      // keep the last-used building (best UX)
-      building: lockedBuilding ? (building as string) : buildingName,
-      specific_location: "",
-      additional_notes: "",
-      photo_url: null,
-      sensitive: defaultFlags.isSensitive,
-      is_high_value: defaultFlags.isHighValue,
-    });
-
-    // Cleanup preview
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoPreview("");
-    setUploadedPhotoPath("");
-
-    if (cameraInputRef.current) cameraInputRef.current.value = "";
-
-    onSuccess();
-  } catch (err) {
-    console.error("Error adding item:", err);
-    alert(err instanceof Error ? err.message : "Failed to add item. Please try again.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      onSuccess();
+    } catch (err) {
+      console.error("Error adding item:", err);
+      alert(err instanceof Error ? err.message : "Failed to add item. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const analyzingBanner = (isUploading || isAnalyzing) && (
     <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg">

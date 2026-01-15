@@ -221,8 +221,7 @@ const MarketingPage = () => {
         </h1>
 
               <p className="mt-4 text-[16px] leading-[24px] text-[#212529] md:max-w-xl">
-                Transform lost and found into a unified searchable digital system students and
-                your staff will love.
+                 Transform lost and found into a unified searchable digital system that your students and staff will love.
               </p>
 
               <div className="mt-6 flex justify-center md:justify-start">
@@ -273,7 +272,7 @@ const MarketingPage = () => {
                   Log and Track with AI
                 </div>
                 <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
-                  A quick, searchable system that keeps every lost item organized & easy to find.
+                  Use AI to log lost item in seconds while keeping everything organized in one searchable system.
                 </p>
               </div>
             </div>

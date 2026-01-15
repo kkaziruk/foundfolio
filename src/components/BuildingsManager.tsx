@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Building2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Building2 } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 interface BuildingsManagerProps {
   campus: string;
@@ -11,35 +11,41 @@ interface BuildingsManagerProps {
 interface Building {
   id: string;
   name: string;
-  campus: string;
+  campus_slug: string;
   created_at: string;
+  is_system?: boolean | null;
 }
 
 function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsManagerProps) {
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [newBuildingName, setNewBuildingName] = useState('');
+  const [newBuildingName, setNewBuildingName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     fetchBuildings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campus]);
 
   const fetchBuildings = async () => {
     try {
       setLoading(true);
+      setError("");
+
       const { data, error } = await supabase
-        .from('buildings')
-        .select('*')
-        .eq('campus_slug', campus)
-        .order('name');
+        .from("buildings")
+        .select("id,name,campus_slug,created_at,is_system")
+        .eq("campus_slug", campus)
+        .eq("is_system", false) // hide system buildings (e.g., NDPD)
+        .order("name");
 
       if (error) throw error;
-      setBuildings(data || []);
+
+      setBuildings((data ?? []) as Building[]);
     } catch (err) {
-      console.error('Error fetching buildings:', err);
-      setError('Failed to load buildings');
+      console.error("Error fetching buildings:", err);
+      setError("Failed to load buildings");
     } finally {
       setLoading(false);
     }
@@ -47,58 +53,60 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
 
   const handleAddBuilding = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
-    if (!newBuildingName.trim()) {
-      setError('Please enter a building name');
+    const name = newBuildingName.trim();
+
+    if (!name) {
+      setError("Please enter a building name");
+      return;
+    }
+
+    // Guard against recreating system buildings
+    if (name.toLowerCase() === "ndpd") {
+      setError("That building name is reserved.");
       return;
     }
 
     try {
       const { error } = await supabase
-        .from('buildings')
-        .insert([{ name: newBuildingName.trim(), campus_slug: campus }]);
+        .from("buildings")
+        .insert([{ name, campus_slug: campus }]);
 
       if (error) throw error;
 
-      setSuccess('Building added successfully!');
-      setNewBuildingName('');
-      fetchBuildings();
+      setSuccess("Building added successfully!");
+      setNewBuildingName("");
+      await fetchBuildings();
       onBuildingsChange?.();
 
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err: any) {
-      console.error('Error adding building:', err);
-      if (err.code === '23505') {
-        setError('This building already exists');
+      console.error("Error adding building:", err);
+      if (err?.code === "23505") {
+        setError("This building already exists");
       } else {
-        setError('Failed to add building');
+        setError("Failed to add building");
       }
     }
   };
 
   const handleDeleteBuilding = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) {
-      return;
-    }
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('buildings')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from("buildings").delete().eq("id", id);
       if (error) throw error;
 
-      setSuccess('Building deleted successfully!');
-      fetchBuildings();
+      setSuccess("Building deleted successfully!");
+      await fetchBuildings();
       onBuildingsChange?.();
 
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      console.error('Error deleting building:', err);
-      setError('Failed to delete building');
+      console.error("Error deleting building:", err);
+      setError("Failed to delete building");
     }
   };
 

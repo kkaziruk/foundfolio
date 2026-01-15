@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search as SearchIcon, Building2, BarChart3, LogOut, User } from "lucide-react";
+import {
+  Search as SearchIcon,
+  Building2,
+  BarChart3,
+  LogOut,
+  User,
+  Inbox,
+} from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
 import ItemsList from "../components/ItemsList";
@@ -9,24 +16,32 @@ import ManageStaff from "../components/ManageStaff";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
-type AdminView = "analytics" | "buildings" | "staff";
+type AdminView = "analytics" | "buildings" | "staff" | "intake";
 
 type BuildingRow = {
   id: string;
   name: string;
 };
 
+const IntakeBanner = () => (
+  <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl p-4">
+    <div className="font-semibold">NDPD Intake</div>
+    <div className="text-sm text-blue-800">
+      Items added here are held at <span className="font-medium">Hammes Mowbray Hall (NDPD)</span>.
+    </div>
+  </div>
+);
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const { campus: campusParam } = useParams();
   const campus = (campusParam ?? "").toLowerCase();
 
-  const { user, loading, profile } = useAuth();
+  const { user, loading, profile, profileLoading } = useAuth();
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // NOTE: keeping selection as building NAME for now (matches your existing AddItemForm/ItemsList props)
-  // If you later switch those to building_id, this gets even cleaner.
   const [selectedBuilding, setSelectedBuilding] = useState<string>("All Buildings");
 
   const [adminView, setAdminView] = useState<AdminView>("analytics");
@@ -40,33 +55,42 @@ export default function AdminPage() {
 
   // --- Guard: auth + onboarding + role + campus match ---
   useEffect(() => {
+    // Wait for session bootstrap
     if (loading) return;
 
+    // Not signed in
     if (!user) {
       navigate("/login", { replace: true });
       return;
     }
 
+    // Wait for profile to load before making decisions that depend on it
+    if (profileLoading) return;
+
+    // Signed in but no profile row / missing campus
     if (!profile?.campus_slug) {
       navigate("/not-onboarded", { replace: true });
       return;
     }
 
+    // Signed in but not staff
     if (!isStaff) {
       navigate("/unauthorized", { replace: true });
       return;
     }
 
+    // Missing campus param → route to their campus admin page
     if (!campus) {
       navigate(`/admin/${profile.campus_slug}`, { replace: true });
       return;
     }
 
+    // Campus mismatch → route to their campus admin page
     if (profile.campus_slug !== campus) {
       navigate(`/admin/${profile.campus_slug}`, { replace: true });
       return;
     }
-  }, [loading, user, profile?.campus_slug, isStaff, campus, navigate]);
+  }, [loading, user, profileLoading, profile?.campus_slug, isStaff, campus, navigate]);
 
   // --- Campus display name from DB ---
   useEffect(() => {
@@ -107,6 +131,7 @@ export default function AdminPage() {
         .from("buildings")
         .select("id,name")
         .eq("campus_slug", campus)
+        .eq("is_system", false) // hide system buildings (e.g., NDPD)
         .order("name");
 
       if (error) throw error;
@@ -156,10 +181,17 @@ export default function AdminPage() {
 
   // call it when page becomes valid
   useEffect(() => {
-    if (!loading && user && profile?.campus_slug && isStaff && campus && profile.campus_slug === campus) {
+    const isReady =
+      !loading &&
+      !profileLoading &&
+      user &&
+      isStaff &&
+      profile?.campus_slug === campus;
+
+    if (isReady) {
       fetchBuildings();
     }
-  }, [loading, user, profile?.campus_slug, isStaff, campus, profile?.campus_slug, fetchBuildings]);
+  }, [loading, profileLoading, user, profile?.campus_slug, isStaff, campus, fetchBuildings]);
 
   const handleItemAdded = () => setRefreshTrigger((p) => p + 1);
 
@@ -172,12 +204,18 @@ export default function AdminPage() {
     return selectedBuilding === "All Buildings" && !isBuildingManager;
   }, [selectedBuilding, isBuildingManager]);
 
+  // Session bootstrap
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
   }
 
-  // While redirects happen
-  if (!user || !profile?.campus_slug || !isStaff || profile.campus_slug !== campus) {
+  // Profile fetch window (don’t redirect here)
+  if (user && profileLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
+  }
+
+  // While redirects happen (but only after profile is loaded)
+  if (!user || (!profileLoading && (!profile?.campus_slug || !isStaff || profile.campus_slug !== campus))) {
     return <div className="min-h-screen flex items-center justify-center">Redirecting…</div>;
   }
 
@@ -187,7 +225,11 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/found_folio_(6).png" alt="FoundFolio Logo" className="w-12 h-12 object-contain" />
+              <img
+                src="/found_folio_(6).png"
+                alt="FoundFolio Logo"
+                className="w-12 h-12 object-contain"
+              />
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Admin</h1>
                 <p className="text-sm text-slate-600">{campusName}</p>
@@ -227,9 +269,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <h3 className="text-sm font-medium text-slate-700">Building</h3>
-                {isBuildingManager && (
-                  <p className="text-xs text-slate-500">Locked to your building</p>
-                )}
+                {isBuildingManager && <p className="text-xs text-slate-500">Locked to your building</p>}
               </div>
             </div>
 
@@ -280,6 +320,20 @@ export default function AdminPage() {
 
                   {isCampusAdmin && (
                     <button
+                      onClick={() => setAdminView("intake")}
+                      className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+                        adminView === "intake"
+                          ? "bg-[#3B82F6] text-white"
+                          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+                      }`}
+                    >
+                      <Inbox className="w-5 h-5" />
+                      Intake
+                    </button>
+                  )}
+
+                  {isCampusAdmin && (
+                    <button
                       onClick={() => setAdminView("staff")}
                       className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
                         adminView === "staff"
@@ -294,9 +348,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {adminView === "analytics" && (
-                <AdminDashboard campus={campus} building={selectedBuilding} />
-              )}
+              {adminView === "analytics" && <AdminDashboard campus={campus} building={selectedBuilding} />}
 
               {adminView === "buildings" && (
                 <BuildingsManager
@@ -306,12 +358,15 @@ export default function AdminPage() {
                 />
               )}
 
-              {adminView === "staff" && isCampusAdmin && (
-                <ManageStaff
-                  campus={campus}
-                  buildings={buildings} // {id,name}[]
-                />
+              {adminView === "intake" && isCampusAdmin && (
+                <div className="space-y-6">
+                  <IntakeBanner />
+                  <AddItemForm onSuccess={handleItemAdded} campus={campus} building="NDPD" />
+                  <ItemsList refreshTrigger={refreshTrigger} campus={campus} building="NDPD" />
+                </div>
               )}
+
+              {adminView === "staff" && isCampusAdmin && <ManageStaff campus={campus} buildings={buildings} />}
             </>
           ) : (
             <>

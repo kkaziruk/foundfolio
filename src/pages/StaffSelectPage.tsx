@@ -41,8 +41,9 @@ export default function StaffSelectPage() {
 
         const { data, error } = await supabase
           .from("buildings")
-          .select("id,name")
+          .select("id,name,is_system")
           .eq("campus_slug", campus)
+          .eq("is_system", false) // ✅ hide system buildings (e.g., NDPD)
           .order("name");
 
         if (error) throw error;
@@ -86,10 +87,7 @@ export default function StaffSelectPage() {
       <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-semibold text-slate-900">Staff sign-in</h1>
-          <Link
-            to="/login"
-            className="text-sm text-slate-600 hover:text-slate-900 underline"
-          >
+          <Link to="/login" className="text-sm text-slate-600 hover:text-slate-900 underline">
             Back
           </Link>
         </div>
@@ -125,9 +123,7 @@ export default function StaffSelectPage() {
         </div>
 
         {buildings.length === 0 && (
-          <div className="text-sm text-slate-600 mt-4">
-            No buildings found for this campus.
-          </div>
+          <div className="text-sm text-slate-600 mt-4">No buildings found for this campus.</div>
         )}
       </div>
     </div>

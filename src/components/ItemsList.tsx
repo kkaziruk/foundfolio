@@ -20,6 +20,14 @@ type BuildingRow = { id: string; name: string };
 
 const ITEMS_PER_PAGE = 50;
 
+// Helper to display friendly names for system buildings
+function displayBuildingName(campus: string, building: string) {
+  const c = (campus || "").toLowerCase();
+  const b = (building || "").trim();
+  if (c === "nd" && b === "NDPD") return "Hammes Mowbray Hall (NDPD)";
+  return b;
+}
+
 export default function ItemsList({ refreshTrigger, campus, building }: ItemsListProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,10 +91,12 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
     if (!campus) return;
     setBuildingsLoading(true);
     try {
+      // Hide system buildings (NDPD) from the general select list
       const { data, error } = await supabase
         .from("buildings")
         .select("id,name")
         .eq("campus_slug", campus)
+        .eq("is_system", false)
         .order("name");
 
       if (error) throw error;
@@ -181,6 +191,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
         .eq("id", selectedItem.id);
       if (updErr) throw updErr;
 
+      // Instant UI update
       setItems((prev) =>
         prev.map((it) => (it.id === selectedItem.id ? { ...it, status: "picked_up" } : it))
       );
@@ -197,61 +208,61 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
   // ===== Export flow =====
   const handleExport = async () => {
-  setExporting(true);
-  setShowExportModal(false);
+    setExporting(true);
+    setShowExportModal(false);
 
-  try {
-    const params = new URLSearchParams();
-    params.set("campus_slug", campus);
-    if (building !== "All Buildings") params.set("building", building);
+    try {
+      const params = new URLSearchParams();
+      params.set("campus_slug", campus);
+      if (building !== "All Buildings") params.set("building", building);
 
-    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-items?${params.toString()}`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-items?${params.toString()}`;
 
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) throw new Error("Not signed in");
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Not signed in");
 
-    const res = await fetch(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      const res = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    if (!res.ok) {
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("application/json")) {
-        const j = await res.json();
-        throw new Error(j.error || "Export failed");
-      } else {
-        const t = await res.text();
-        throw new Error(t || "Export failed");
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const j = await res.json();
+          throw new Error(j.error || "Export failed");
+        } else {
+          const t = await res.text();
+          throw new Error(t || "Export failed");
+        }
       }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+
+      const buildingSlug =
+        building === "All Buildings" ? "all-buildings" : building.toLowerCase().replace(/\s+/g, "-");
+
+      link.download = `lost-and-found-${campus}-${buildingSlug}-${new Date()
+        .toISOString()
+        .split("T")[0]}.csv`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(`Failed to export: ${err instanceof Error ? err.message : "Try again."}`);
+    } finally {
+      setExporting(false);
     }
-
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-
-    const buildingSlug =
-      building === "All Buildings" ? "all-buildings" : building.toLowerCase().replace(/\s+/g, "-");
-
-    link.download = `lost-and-found-${campus}-${buildingSlug}-${new Date()
-      .toISOString()
-      .split("T")[0]}.csv`;
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.error(err);
-    alert(`Failed to export: ${err instanceof Error ? err.message : "Try again."}`);
-  } finally {
-    setExporting(false);
-  }
-};
+  };
 
   // ===== Move flow =====
   const openMoveModal = (item: Item) => {
@@ -294,7 +305,8 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
       let nextNotes = moveTargetItem.additional_notes ?? "";
       if (moveAppendNote) {
         const stamp = new Date().toLocaleString();
-        const noteLine = `Moved to ${destinationBuilding} (${newLocation}) on ${stamp}.`;
+        const friendlyDest = displayBuildingName(campus, destinationBuilding);
+        const noteLine = `Moved to ${friendlyDest} (${newLocation}) on ${stamp}.`;
         nextNotes = nextNotes ? `${nextNotes}\n${noteLine}` : noteLine;
       }
 
@@ -368,7 +380,9 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                 <>
                   {" "}
                   <span className="text-slate-400">·</span>{" "}
-                  <span className="text-slate-500">{building}</span>
+                  <span className="text-slate-500">
+                    {displayBuildingName(campus, building)}
+                  </span>
                 </>
               )}
             </p>
@@ -380,7 +394,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
             className="flex items-center gap-2 px-4 py-2 bg-[#10B981] text-white rounded-lg hover:bg-[#059669] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
-            <span>{exporting ? "Exporting..." : "Export Excel"}</span>
+            <span>{exporting ? "Exporting..." : "Export CSV"}</span>
           </button>
         </div>
 
@@ -484,13 +498,16 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
                       <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm text-slate-600">
                         <div>
-                          <span className="font-medium">Building:</span> {item.building}
+                          <span className="font-medium">Building:</span>{" "}
+                          {displayBuildingName(campus, item.building)}
                         </div>
                         <div className="md:col-span-2">
-                          <span className="font-medium">Location:</span> {item.specific_location}
+                          <span className="font-medium">Location:</span>{" "}
+                          {item.specific_location}
                         </div>
                         <div>
-                          <span className="font-medium">Found:</span> {formatDate(item.date_found)}
+                          <span className="font-medium">Found:</span>{" "}
+                          {formatDate(item.date_found)}
                         </div>
                       </div>
 
@@ -546,7 +563,8 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
               <p className="text-sm font-medium text-slate-700 mb-1">Item:</p>
               <p className="font-semibold text-slate-900">{moveTargetItem.description}</p>
               <p className="text-xs text-slate-600 mt-1">
-                Current: {moveTargetItem.building} · {moveTargetItem.specific_location}
+                Current: {displayBuildingName(campus, moveTargetItem.building)} ·{" "}
+                {moveTargetItem.specific_location}
               </p>
             </div>
 
@@ -589,7 +607,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                   >
                     {buildings.length === 0 ? (
                       <option value={moveTargetItem.building}>
-                        {moveTargetItem.building} (current)
+                        {displayBuildingName(campus, moveTargetItem.building)} (current)
                       </option>
                     ) : (
                       buildings.map((b) => (
@@ -740,7 +758,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
             <div className="p-6">
               <p className="text-slate-600 mb-4">
                 This exports <span className="font-medium">{campusDisplay}</span>{" "}
-                {building === "All Buildings" ? "items for all buildings." : `items for ${building}.`}
+                {building === "All Buildings" ? "items for all buildings." : `items for ${displayBuildingName(campus, building)}.`}
               </p>
 
               <div className="flex gap-3 pt-2">

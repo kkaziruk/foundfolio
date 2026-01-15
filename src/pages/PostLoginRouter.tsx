@@ -24,7 +24,7 @@ async function resolveCampusByDomain(domain: string) {
 
 export default function PostLoginRouter() {
   const navigate = useNavigate();
-  const { user, loading, profile } = useAuth();
+  const { user, loading, profile, profileLoading } = useAuth();
   const didNavigateRef = useRef(false);
   const [status, setStatus] = useState("Determining your campus...");
 
@@ -36,6 +36,15 @@ export default function PostLoginRouter() {
       if (!user) {
         didNavigateRef.current = true;
         navigate("/login", { replace: true });
+        return;
+      }
+
+      // IMPORTANT:
+      // After session bootstrap, there's a brief window where user exists but profile is still loading.
+      // Without waiting here, we can mistakenly treat staff as students (or re-upsert profiles) before
+      // the real profile arrives.
+      if (profileLoading) {
+        setStatus("Loading your account…");
         return;
       }
 
@@ -60,9 +69,7 @@ export default function PostLoginRouter() {
 
         const campusMatches = existingCampus === staffIntent.campus;
 
-        const buildingMatches = wantsAdmin
-          ? true
-          : existingBuilding === staffIntent.building_id;
+        const buildingMatches = wantsAdmin ? true : existingBuilding === staffIntent.building_id;
 
         // If profile isn't already correct, check allowlist invites
         const email = user.email?.toLowerCase() ?? "";
@@ -80,16 +87,12 @@ export default function PostLoginRouter() {
           } else {
             inviteApproved = (invites ?? []).some((inv: any) => {
               if (wantsAdmin) return inv.role === "campus_admin";
-              return (
-                inv.role === "building_manager" &&
-                inv.building_id === staffIntent.building_id
-              );
+              return inv.role === "building_manager" && inv.building_id === staffIntent.building_id;
             });
           }
         }
 
-        const allowed =
-          (roleMatches && campusMatches && buildingMatches) || inviteApproved;
+        const allowed = (roleMatches && campusMatches && buildingMatches) || inviteApproved;
 
         if (!allowed) {
           clearStaffIntent();
@@ -177,22 +180,19 @@ export default function PostLoginRouter() {
       }
 
       // Only create/repair student profile if it's missing or already student-but-incomplete.
-      const needsStudentProfile =
-        !profile?.role || (profile.role === "student" && !profile.campus_slug);
+      const needsStudentProfile = !profile?.role || (profile.role === "student" && !profile.campus_slug);
 
       if (needsStudentProfile) {
         setStatus("Setting up your account…");
-        const { error: upsertError } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              user_id: user.id,
-              role: "student",
-              campus_slug: campusSlug,
-              building_id: null,
-            },
-            { onConflict: "user_id" }
-          );
+        const { error: upsertError } = await supabase.from("profiles").upsert(
+          {
+            user_id: user.id,
+            role: "student",
+            campus_slug: campusSlug,
+            building_id: null,
+          },
+          { onConflict: "user_id" }
+        );
 
         if (upsertError) {
           console.error(upsertError);
@@ -205,7 +205,7 @@ export default function PostLoginRouter() {
       didNavigateRef.current = true;
       navigate(`/${campusSlug}`, { replace: true });
     })();
-  }, [loading, user, profile, navigate]);
+  }, [loading, user, profile, profileLoading, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
