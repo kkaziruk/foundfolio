@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { popAuthError } from "../lib/authIntent";
+import { GraduationCap, Building2 } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function LoginPage() {
     }
   }, [authLoading, user, navigate]);
 
-  const signInStudent = async () => {
+  const logInStudent = async () => {
     if (authLoading) return;
     setError("");
     const { error } = await supabase.auth.signInWithOAuth({
@@ -39,98 +40,98 @@ export default function LoginPage() {
 
   const goStaff = () => {
     if (authLoading) return;
-    navigate("/staff", { replace: false }); // <-- not hardcoded to nd
+    navigate("/staff", { replace: false });
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-slate-600">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center">
-        {/* Left side - Branding (hidden on mobile) */}
-        <div className="hidden md:flex flex-col items-center justify-center">
-          <img
-            src="/found_folio_(6).png"
-            alt="FoundFolio Logo"
-            className="w-32 h-32 object-contain mb-6 cursor-pointer hover:opacity-80 transition"
-            onClick={() => navigate("/")}
-          />
-          <h2 className="text-3xl font-bold text-slate-900 text-center mb-3">
-            FoundFolio
-          </h2>
-          <p className="text-lg text-slate-600 text-center max-w-sm mb-6">
-            A searchable lost and found system for campus
+    <div className="min-h-screen bg-white">
+      <main className="min-h-screen flex flex-col items-center justify-center px-4">
+        {/* Header copy (tight, calm) */}
+        <div className="mx-auto max-w-xl text-center mb-6">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
+            Log in to FoundFolio
+          </h1>
+          <p className="mt-3 text-sm md:text-base text-slate-600">
+            Access your campus lost &amp; found dashboard. Choose your role to
+            continue.
           </p>
-          <img
-            src="/screenshot_2025-11-08_at_1.53.00_pm.png"
-            alt="FoundFolio Interface"
-            className="w-full max-w-md rounded-lg shadow-xl"
-          />
         </div>
 
-        {/* Right side - Login form */}
-        <div className="w-full bg-white rounded-xl shadow-lg p-6 md:p-8">
-          {/* Mobile logo + tagline */}
-          <div className="md:hidden flex flex-col items-center mb-6">
-            <img
-              src="/found_folio_(6).png"
-              alt="FoundFolio Logo"
-              className="w-16 h-16 object-contain mb-3 cursor-pointer hover:opacity-80 transition"
-              onClick={() => navigate("/")}
-            />
-            <h2 className="text-xl font-bold text-slate-900 text-center">
-              FoundFolio
-            </h2>
-            <p className="text-sm text-slate-600 text-center">
-              Campus Lost & Found
-            </p>
-          </div>
+        {/* Card (hero) */}
+        <div className="mx-auto w-full max-w-xl">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-7">
+            {error && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+                {error}
+              </div>
+            )}
 
-          <h1 className="text-2xl font-semibold text-slate-900 mb-2">Sign in</h1>
-          <p className="text-sm text-slate-600 mb-6">
-            Choose how you're signing in
-          </p>
+            <div className="space-y-3">
+              {/* Student */}
+              <button
+                onClick={logInStudent}
+                disabled={authLoading}
+                className="w-full text-left rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition p-4 disabled:opacity-60"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 h-9 w-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                    <GraduationCap className="w-[18px] h-[18px] text-slate-700" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900">Student</div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Search for lost items and report what you&apos;ve found.
+                    </p>
+                  </div>
+                </div>
+              </button>
 
-          {error && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
-              {error}
+              {/* Building Manager / Admin */}
+              <button
+                onClick={goStaff}
+                disabled={authLoading}
+                className="w-full text-left rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition p-4 disabled:opacity-60"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 h-9 w-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                    <Building2 className="w-[18px] h-[18px] text-slate-700" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900">
+                      Building Manager / Admin
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Log items, manage returns, and oversee your building&apos;s
+                      lost &amp; found.
+                    </p>
+                  </div>
+                </div>
+              </button>
             </div>
-          )}
 
-          <div className="space-y-3">
-            <button
-              onClick={signInStudent}
-              disabled={authLoading}
-              className="w-full px-4 py-3 bg-[#3B82F6] text-white rounded-lg hover:bg-[#2563EB] font-medium transition disabled:opacity-60"
-            >
-              Student
-            </button>
+            <p className="mt-5 text-xs text-slate-500 text-center">
+              Secure log in. Campus access only.
+            </p>
 
-            <button
-              onClick={goStaff}
-              disabled={authLoading}
-              className="w-full px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-lg hover:bg-slate-50 font-medium transition disabled:opacity-60"
-            >
-              Building Manager / Admin
-            </button>
-          </div>
-
-          <div className="mt-6 text-center">
-            <Link
-              to="/"
-              className="text-sm text-slate-600 hover:text-slate-900 underline"
-            >
-              ← Back to home
-            </Link>
+            <div className="mt-5 text-center">
+              <Link
+                to="/"
+                className="text-sm text-slate-600 hover:text-slate-900 underline"
+              >
+                ← Back to home
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
