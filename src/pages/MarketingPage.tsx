@@ -23,7 +23,7 @@ const MarketingPage = () => {
   const [scrolled, setScrolled] = useState(false);
 
   // Rotating word (always on line 2)
-  const words = useMemo(() => ["Reimagined", "Unified", "Simplified", "Connected"], []);
+  const words = useMemo(() => ["Unified", "Simplified", "Connected"], []);
   const [wordIndex, setWordIndex] = useState(0);
 
   // Tabs + FAQ (only one open at a time)
