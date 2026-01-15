@@ -1,6 +1,18 @@
-import React, { useState } from "react";
+// src/pages/MarketingPage.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, X, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Menu,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Box,
+  Laptop,
+  Shield,
+  LayoutList,
+  ArrowLeftRight,
+  PieChart,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const MarketingPage = () => {
@@ -8,169 +20,142 @@ const MarketingPage = () => {
   const { user, loading: authLoading } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("security");
-  const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [contactForm, setContactForm] = useState({
-    name: "",
-    email: "",
-    institution: "",
-    phone: "",
-    message: "",
-  });
-  const [formSubmitted, setFormSubmitted] = useState(false);
 
-  const [securityOfficers, setSecurityOfficers] = useState(2);
-  const [securityHours, setSecurityHours] = useState(12);
-  const [securityHourlyRate, setSecurityHourlyRate] = useState(35);
+  // Rotating word (always on line 2)
+  const words = useMemo(() => ["Reimagined", "Unified", "Simplified", "Connected"], []);
+  const [wordIndex, setWordIndex] = useState(0);
 
-  const [itemsPerMonth, setItemsPerMonth] = useState(500);
-  const [studentHourlyRate, setStudentHourlyRate] = useState(15);
-  const [numBuildings, setNumBuildings] = useState(12);
+  // Tabs + FAQ (only one open at a time)
+  const [activeTab, setActiveTab] = useState<"admin" | "manager" | "student">("admin");
+  const [faqOpen, setFaqOpen] = useState<number | null>(0);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const annualSavings = Math.round(
-    securityOfficers * securityHours * 52 * securityHourlyRate
-  );
-  const roi = (annualSavings / 6000).toFixed(1);
-  const paybackMonths = ((6000 / annualSavings) * 12).toFixed(1);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((i) => (i + 1) % words.length);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [words.length]);
 
-  const hoursSavedPerMonth = Math.round((itemsPerMonth * 2) / 60);
-  const costSavings = Math.round(hoursSavedPerMonth * studentHourlyRate);
-  const hoursPerBuilding = (hoursSavedPerMonth / numBuildings).toFixed(1);
+  const rotatingWord = words[wordIndex];
 
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormSubmitted(true);
-    setTimeout(() => {
-      setShowContactModal(false);
-      setFormSubmitted(false);
-      setContactForm({
-        name: "",
-        email: "",
-        institution: "",
-        phone: "",
-        message: "",
-      });
-    }, 2000);
+  const goToProduct = () => {
+    if (authLoading) return;
+    navigate(user ? "/app" : "/login");
+  };
+
+  const PrimaryNavButton = () => {
+    const label = authLoading ? "Loading..." : user ? "Open FoundFolio" : "Log in";
+    return (
+      <button
+        onClick={goToProduct}
+        disabled={authLoading}
+        className="px-4 py-2 rounded-lg font-semibold border border-gray-300 text-[#212529] hover:bg-gray-50 disabled:opacity-60 disabled:hover:bg-transparent"
+      >
+        {label}
+      </button>
+    );
+  };
+
+  const PrimaryMobileButton = () => {
+    const label = authLoading ? "Loading..." : user ? "Open FoundFolio" : "Log in";
+    return (
+      <button
+        onClick={() => {
+          setMobileMenuOpen(false);
+          goToProduct();
+        }}
+        disabled={authLoading}
+        className="w-full px-4 py-2 rounded-lg font-semibold border border-gray-300 text-[#212529] hover:bg-gray-50 disabled:opacity-60 disabled:hover:bg-transparent"
+      >
+        {label}
+      </button>
+    );
   };
 
   const faqs = [
     {
-      q: "Who has access to what?",
-      a: "Campus security sees everything across all buildings. Building managers only see their own items. Students can search all items but only claim items they own.",
+      q: "How does FoundFolio work?",
+      a: "FoundFolio replaces paper logs and spreadsheets with a simple digital system. Staff can log items in seconds (with photos, details, and locations), and students can check online to see if their item has been found before visiting the desk.",
     },
     {
-      q: "How do high-value alerts work?",
-      a: "When a building logs a high-value item (phones, laptops, wallets, IDs), campus security is automatically notified. Students must pick up these items from security, not the building.",
+      q: "Who is FoundFolio for?",
+      a: "FoundFolio is built for student centers and campus recreation facilities or any location that manages lost items. Each building can use its own dashboard, or campuses can connect multiple locations under one central hub.",
     },
     {
-      q: "How long does implementation take?",
-      a: "Most campuses are up and running in 1-2 weeks. We provide training, setup support, and ongoing assistance.",
+      q: "Is student or item data secure?",
+      a: "Yes — FoundFolio stores all data securely in the cloud using encrypted infrastructure that meets industry security standards. Each campus has its own private dashboard accessible only to approved staff, while student-facing pages display only general item details — never personal information.",
     },
     {
-      q: "What training is needed?",
-      a: "We provide 30-minute virtual training for campus security and building managers. The system is intuitive - most staff are comfortable after one session.",
+      q: "Where is the data stored?",
+      a: "All FoundFolio data is stored securely in the cloud on enterprise-grade servers located in the United States. Our infrastructure providers use encryption in transit and at rest, continuous monitoring, and rigorous data protection standards — the same level of security trusted by universities and enterprise software platforms.",
     },
     {
-      q: "Can we cancel anytime?",
-      a: "Yes, no long-term contracts required. Monthly plans can be cancelled with 30 days notice. If you're not satisfied with the 2-month pilot, we offer a full refund.",
+      q: "How do students access the system?",
+      a: "Each campus gets a unique web link (e.g., foundfolio.co/youruniversity). Students can search items anytime from their phone or laptop — no login or app download needed.",
     },
     {
-      q: "Is it FERPA compliant?",
-      a: "Yes. We follow all data privacy regulations. Student information is protected, and we provide data processing agreements as needed.",
+      q: "What does the pilot include?",
+      a: "1. Free access for 30 days\n2. Setup and onboarding for your team\n3. Staff training and feedback sessions\n4. Dedicated support during the trial",
+    },
+    {
+      q: "How long does it take to get started?",
+      a: "Once we confirm your pilot, your dashboard can be live the next day.",
+    },
+    {
+      q: "How does this help sustainability goals?",
+      a: "FoundFolio helps reduce the number of unclaimed items that end up discarded. We provide reports on recovered items and reuse rates — great for campus sustainability metrics.",
+    },
+    {
+      q: "Can multiple departments use FoundFolio?",
+      a: "Yes — campuses can link multiple buildings under one central system. Each department manages its own items, but administrators can view overall data across all locations.",
+    },
+    {
+      q: "What kind of support is included?",
+      a: "During the pilot, we offer personalized onboarding, email support, and live check-ins. After the pilot, premium tiers include ongoing customer success and quarterly reviews.",
+    },
+    {
+      q: "What happens after the pilot?",
+      a: "At the end of the pilot, we’ll share a summary of your center’s performance (items logged, recovery rates, etc.) and a short feedback session to decide if you’d like to continue as a FoundFolio partner.",
     },
   ];
-const goToProduct = () => {
-  if (authLoading) return;              
-  navigate(user ? "/app" : "/login");   
-};
-
-const PrimaryNavButton = () => {
-  const label = authLoading ? "Loading..." : user ? "Open FoundFolio" : "Sign in";
-
-  return (
-    <button
-      onClick={goToProduct}
-      disabled={authLoading}
-      className={
-        user
-          ? "px-4 py-2 bg-[#3B82F6] text-white rounded-lg hover:bg-[#2563EB] font-medium disabled:opacity-60 disabled:hover:bg-[#3B82F6]"
-          : "px-4 py-2 border border-gray-300 text-black rounded-lg hover:bg-gray-50 font-medium disabled:opacity-60 disabled:hover:bg-transparent"
-      }
-    >
-      {label}
-    </button>
-  );
-};
-
-const PrimaryMobileButton = () => {
-  const label = authLoading ? "Loading..." : user ? "Open FoundFolio" : "Sign in";
-
-  return (
-    <button
-      onClick={() => {
-        setMobileMenuOpen(false);
-        goToProduct();
-      }}
-      disabled={authLoading}
-      className={
-        user
-          ? "block w-full px-4 py-2 bg-[#3B82F6] text-white rounded-lg hover:bg-[#2563EB] font-medium disabled:opacity-60 disabled:hover:bg-[#3B82F6]"
-          : "block w-full px-4 py-2 border border-gray-300 text-black rounded-lg hover:bg-gray-50 font-medium disabled:opacity-60 disabled:hover:bg-transparent"
-      }
-    >
-      {label}
-    </button>
-  );
-};
 
   return (
     <div className="min-h-screen bg-white">
+      {/* NAV */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 bg-white transition-shadow ${
           scrolled ? "shadow-md" : ""
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <img src="/found_folio_(6).png" alt="FoundFolio" className="h-10" />
+            <div className="flex items-center gap-3">
+              <img src="/found_folio_(6).png" alt="FoundFolio" className="h-10 w-auto" />
             </div>
 
-            <div className="hidden md:flex items-center space-x-8">
-              <a
-                href="#how-it-works"
-                className="text-black hover:text-[#3B82F6] font-medium"
-              >
-                How It Works
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#features" className="text-[#212529] hover:text-[#2D3748] font-semibold">
+                Features
               </a>
-              <a
-                href="#pricing"
-                className="text-black hover:text-[#3B82F6] font-medium"
-              >
-                Pricing
+              <a href="#roles" className="text-[#212529] hover:text-[#2D3748] font-semibold">
+                Roles
               </a>
-
+              <a href="#faq" className="text-[#212529] hover:text-[#2D3748] font-semibold">
+                FAQ
+              </a>
               <PrimaryNavButton />
-
-              <button
-                onClick={() => setShowContactModal(true)}
-                className="px-4 py-2 bg-[#F59E0B] text-black rounded-lg hover:bg-[#D97706] font-medium"
-              >
-                Book Demo
-              </button>
             </div>
 
             <button
               className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMobileMenuOpen((v) => !v)}
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -178,927 +163,309 @@ const PrimaryMobileButton = () => {
           </div>
 
           {mobileMenuOpen && (
-            <div className="md:hidden pb-4 space-y-4">
+            <div className="md:hidden pb-4 space-y-3">
               <a
-                href="#how-it-works"
-                className="block text-black hover:text-[#3B82F6] font-medium"
+                href="#features"
+                className="block text-[#212529] font-semibold"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                How It Works
+                Features
               </a>
               <a
-                href="#pricing"
-                className="block text-black hover:text-[#3B82F6] font-medium"
+                href="#roles"
+                className="block text-[#212529] font-semibold"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Pricing
+                Roles
               </a>
-
+              <a
+                href="#faq"
+                className="block text-[#212529] font-semibold"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                FAQ
+              </a>
               <PrimaryMobileButton />
-
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setShowContactModal(true);
-                }}
-                className="block w-full px-4 py-2 bg-[#F59E0B] text-black rounded-lg hover:bg-[#D97706] font-medium"
-              >
-                Book Demo
-              </button>
             </div>
           )}
         </div>
       </nav>
 
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-5 gap-12 items-center">
-            <div className="md:col-span-3">
-              <div className="inline-block bg-[#DBEAFE] text-[#3B82F6] px-4 py-2 rounded-full text-sm font-bold mb-4">
-                Save 15+ Hours Per Week
-              </div>
-              <h1 className="text-5xl md:text-6xl font-bold text-black mb-6 leading-tight">
-                Campus <span className="whitespace-nowrap">Lost & Found</span>
-                <br />
-                Simplified
-              </h1>
-              <p className="text-xl text-gray-600 mb-8">
-                AI-powered lost and found system trusted by campus security and
-                building managers nationwide
+      {/* HERO */}
+<section className="pt-24 pb-10" style={{ backgroundColor: "#FAFAFA" }}>
+  <div className="max-w-6xl mx-auto px-4 sm:px-6">
+    <div className="grid md:grid-cols-2 gap-10 items-center">
+      <div className="text-center md:text-left">
+        <h1
+          className="font-semibold leading-tight"
+          style={{
+            fontFamily:
+              "Poppins, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+            color: "#2D3748",
+          }}
+        >
+          {/* FIRST LINE — locked to one line */}
+          <span className="block text-4xl md:text-5xl whitespace-nowrap">
+            Campus Lost and Found
+          </span>
+
+          {/* SECOND LINE — rotating word */}
+          <span className="block mt-2 min-h-[1.2em] text-4xl md:text-5xl">
+            <span
+              key={rotatingWord}
+              className="inline-block animate-fade"
+            >
+              {rotatingWord}
+            </span>
+          </span>
+        </h1>
+
+              <p className="mt-4 text-[16px] leading-[24px] text-[#212529] md:max-w-xl">
+                Transform lost and found into a unified searchable digital system students and
+                your staff will love.
               </p>
 
-              <div className="grid md:grid-cols-2 gap-6 mb-8">
-                <div>
-                  <h3 className="font-bold text-black mb-3">FOR CAMPUS SECURITY:</h3>
-                  <ul className="space-y-2 text-gray-700">
-                    <li>✓ See all items campus-wide</li>
-                    <li>✓ Auto-alerts for valuables</li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-bold text-black mb-3">
-                    FOR BUILDING MANAGERS:
-                  </h3>
-                  <ul className="space-y-2 text-gray-700">
-                    <li>✓ Log items in seconds with AI</li>
-                    <li>✓ Students search online</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-6 items-center mb-8">
+              <div className="mt-6 flex justify-center md:justify-start">
                 <button
-                  onClick={() => setShowContactModal(true)}
-                  className="px-8 py-4 bg-[#F59E0B] text-black rounded-lg hover:bg-[#D97706] font-bold text-lg shadow-lg"
+                  onClick={goToProduct}
+                  disabled={authLoading}
+                  className="px-5 py-3 rounded-lg font-semibold border border-gray-300 text-[#212529] hover:bg-white disabled:opacity-60"
                 >
-                  Start Free 2-Month Pilot
+                  {authLoading ? "Loading..." : user ? "Open FoundFolio" : "Log in"}
                 </button>
-                <div className="text-gray-600 text-sm">
-                  <div className="font-bold">✓ No credit card required</div>
-                  <div className="font-bold">✓ Money-back guarantee</div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-8 items-center pt-6 border-t border-gray-200">
-                <div className="flex items-center gap-2 text-sm text-[#374151]">
-                  <svg
-                    className="w-5 h-5 text-[#10B981]"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    />
-                  </svg>
-                  <span className="font-medium">FERPA Compliant</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-[#374151]">
-                  <svg
-                    className="w-5 h-5 text-[#10B981]"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                    />
-                  </svg>
-                  <span className="font-medium">Bank-Grade Security</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-[#374151]">
-                  <svg
-                    className="w-5 h-5 text-[#10B981]"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
-                    <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
-                  </svg>
-                  <span className="font-medium">24/7 Support</span>
-                </div>
               </div>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="flex justify-center md:justify-end">
               <img
                 src="/screenshot_2025-11-08_at_1.53.00_pm.png"
-                alt="Lost and Found Illustration"
-                className="w-full h-auto rounded-2xl shadow-2xl"
+                alt="FoundFolio illustration"
+                className="w-full max-w-md h-auto"
               />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center text-black mb-16">
-            Two Problems. One Solution.
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className="bg-white p-8 rounded-lg shadow-sm border-l-4 border-[#3B82F6]">
-              <h3 className="text-2xl font-bold text-black mb-4">
-                Campus Security's Problem
-              </h3>
-              <ul className="space-y-3 text-gray-700">
-                <li>• Officers waste 10-15 hours/week on pickups</li>
-                <li>• Cluttered office due to low claims and search fatigue</li>
-                <li>• No/Low visibility across buildings</li>
-              </ul>
-            </div>
-
-            <div className="bg-white p-8 rounded-lg shadow-sm border-l-4 border-[#F59E0B]">
-              <h3 className="text-2xl font-bold text-black mb-4">
-                Building Manager's Problem
-              </h3>
-              <ul className="space-y-3 text-gray-700">
-                <li>• Hand-writing takes 2+ minutes/item</li>
-                <li>• Flipping through pages to confirm missing items</li>
-                <li>• Calling security for every high value item</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center text-black mb-4">
-            Before vs. After FoundFolio
-          </h2>
-          <p className="text-center text-gray-600 mb-12 text-lg">
-            See the difference for yourself
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-8">
-              <h3 className="text-2xl font-bold text-red-900 mb-6 flex items-center">
-                <span className="text-3xl mr-3">❌</span>
-                Old Way
-              </h3>
-              <ul className="space-y-4 text-gray-700">
-                <li className="flex items-start">
-                  <span className="text-red-500 mr-2 mt-1">•</span>
-                  <span>Building managers hand-write descriptions in notebooks</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-red-500 mr-2 mt-1">•</span>
-                  <span>Students call or walk to every building searching for items</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-red-500 mr-2 mt-1">•</span>
-                  <span>Security officers spend hours doing routine pickups</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-red-500 mr-2 mt-1">•</span>
-                  <span>No visibility into what's at other locations</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-red-500 mr-2 mt-1">•</span>
-                  <span>High-value items mixed with everything else</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-red-500 mr-2 mt-1">•</span>
-                  <span>Flipping through pages to confirm missing items</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-red-500 mr-2 mt-1">•</span>
-                  <span>Low claim rates, cluttered storage spaces</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-8">
-              <h3 className="text-2xl font-bold text-green-900 mb-6 flex items-center">
-                <span className="text-3xl mr-3">✅</span>
-                With FoundFolio
-              </h3>
-              <ul className="space-y-4 text-gray-700">
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Snap a photo, AI generates description in 3 seconds</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Students search all buildings at once from anywhere</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Security only handles high-value items automatically</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Campus-wide dashboard shows everything in real-time</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Automatic alerts for phones, laptops, wallets, IDs</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Instant keyword search across all descriptions and photos</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Higher claim rates, better organized, analytics included</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center text-black mb-16">
-            Simple 3-Step Process
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-[#FEF3C7] rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
-                📸
-              </div>
-              <h3 className="text-2xl font-bold text-black mb-4">Buildings Log Items</h3>
-              <p className="text-[#374151]">
-                Building staff simply snap a photo of any found item. Our AI
-                instantly generates a detailed, searchable description in just 3
-                seconds. No more manual data entry or time-consuming paperwork.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-20 h-20 bg-[#DBEAFE] rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
-                🔍
-              </div>
-              <h3 className="text-2xl font-bold text-black mb-4">Students Search</h3>
-              <p className="text-[#374151]">
-                Students can search across all campus buildings at once using
-                keywords or browsing photos. No need to visit multiple locations
-                or make endless phone calls to track down lost belongings.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-20 h-20 bg-[#D1FAE5] rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
-                ✅
-              </div>
-              <h3 className="text-2xl font-bold text-black mb-4">Smart Claims</h3>
-              <p className="text-[#374151]">
-                Students pick up regular items directly from buildings for
-                convenience. High-value items like phones, laptops, wallets, and
-                IDs automatically route to campus security for added protection.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#F9FAFB] to-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center mb-12 border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab("security")}
-              className={`px-8 py-4 font-bold text-lg ${
-                activeTab === "security"
-                  ? "text-[#3B82F6] border-b-4 border-[#3B82F6]"
-                  : "text-gray-500"
-              }`}
+      {/* FEATURES */}
+      <section id="features" className="py-14 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center">
+            <h2
+              style={{ fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", fontWeight: 600, color: "#000" }}
+              className="text-[34px] leading-tight"
             >
-              Campus Security
-            </button>
-            <button
-              onClick={() => setActiveTab("managers")}
-              className={`px-8 py-4 font-bold text-lg ${
-                activeTab === "managers"
-                  ? "text-[#3B82F6] border-b-4 border-[#3B82F6]"
-                  : "text-gray-500"
-              }`}
-            >
-              Building Managers
-            </button>
-            <button
-              onClick={() => setActiveTab("students")}
-              className={`px-8 py-4 font-bold text-lg ${
-                activeTab === "students"
-                  ? "text-[#3B82F6] border-b-4 border-[#3B82F6]"
-                  : "text-gray-500"
-              }`}
-            >
-              Students
-            </button>
+              Managing Lost Items Just Got Easier
+            </h2>
+            <p className="mt-3 text-[18px] leading-[28px] text-[#2D3748] max-w-2xl mx-auto">
+              FoundFolio helps universities save time, reduce waste, and create a better student
+              experience — all in one simple platform.
+            </p>
           </div>
 
-          {activeTab === "security" && (
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">🗺️</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  Campus-wide Dashboard
-                </h3>
-                <p className="text-gray-600">
-                  See all items across every building in one place. Real-time
-                  updates as items are logged and claimed.
-                </p>
+          <div className="mt-10 grid gap-8 md:grid-cols-2">
+            <div className="flex gap-4 items-start">
+              <div className="mt-1">
+                <Box className="w-10 h-10 text-[#2F6B7C]" />
               </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">🔒</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  Automatic High-Value Alerts
-                </h3>
-                <p className="text-gray-600">
-                  Get instant notifications when phones, laptops, wallets, or
-                  IDs are logged. No more surprise pickups.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">📊</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  Analytics & Reporting
-                </h3>
-                <p className="text-gray-600">
-                  Track recovery rates, response times, and trends. Data-driven
-                  insights for campus operations.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">⚡</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  Zero Routine Pickups
-                </h3>
-                <p className="text-gray-600">
-                  Buildings keep regular items. You only handle high-value items.
-                  Save 10+ hours per week.
+              <div>
+                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
+                  Log and Track with AI
+                </div>
+                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
+                  A quick, searchable system that keeps every lost item organized & easy to find.
                 </p>
               </div>
             </div>
-          )}
 
-          {activeTab === "managers" && (
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">🤖</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  AI-Powered Logging
-                </h3>
-                <p className="text-gray-600">
-                  Take a photo, AI describes it in 3 seconds. No more hand-writing
-                  detailed descriptions.
-                </p>
+            <div className="flex gap-4 items-start">
+              <div className="mt-1">
+                <Laptop className="w-10 h-10 text-[#E3B15A]" />
               </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">✅</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  Simple Claims Management
-                </h3>
-                <p className="text-gray-600">
-                  Students search online first. When they arrive, verify and mark
-                  as claimed. Quick and easy.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">🔔</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  One-Click Security Alerts
-                </h3>
-                <p className="text-gray-600">
-                  High-value items automatically notify security. No phone calls,
-                  no forms, completely automated.
+              <div>
+                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
+                  Students Search From Anywhere
+                </div>
+                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
+                  Make it easy for students to see what&apos;s lost before going to the desk.
                 </p>
               </div>
             </div>
-          )}
 
-          {activeTab === "students" && (
-            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">🔍</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  Search All Buildings
-                </h3>
-                <p className="text-gray-600">
-                  One search shows items from every building on campus. See photos
-                  and details instantly.
-                </p>
+            <div className="flex gap-4 items-start">
+              <div className="mt-1">
+                <Shield className="w-10 h-10 text-[#2E6AA8]" />
               </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="text-4xl mb-4">⚡</div>
-                <h3 className="text-xl font-bold text-black mb-2">
-                  Find Items Faster
-                </h3>
-                <p className="text-gray-600">
-                  No more calling multiple buildings or walking around campus.
-                  Search from anywhere, anytime.
+              <div>
+                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
+                  Automatic High Value Item Alerts
+                </div>
+                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
+                  Built-in alerts to help staff meet safety requirements for high value items.
                 </p>
               </div>
             </div>
-          )}
-        </div>
-      </section>
 
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#3B82F6] text-white">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center text-white mb-4">
-            Calculate Your Savings
-          </h2>
-          <p className="text-center text-blue-100 mb-12 text-lg">
-            See the impact on your campus
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white/10 backdrop-blur-sm p-8 rounded-lg">
-              <h3 className="text-2xl font-bold text-white mb-6">
-                Campus Security Savings
-              </h3>
-
-              <div className="space-y-6 mb-8">
-                <div>
-                  <label className="block text-white mb-2">
-                    Officers: {securityOfficers}
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={securityOfficers}
-                    onChange={(e) => setSecurityOfficers(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white mb-2">
-                    Hours/week: {securityHours}
-                  </label>
-                  <input
-                    type="range"
-                    min="5"
-                    max="20"
-                    value={securityHours}
-                    onChange={(e) => setSecurityHours(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white mb-2">
-                    Hourly cost: ${securityHourlyRate}
-                  </label>
-                  <input
-                    type="range"
-                    min="25"
-                    max="50"
-                    value={securityHourlyRate}
-                    onChange={(e) => setSecurityHourlyRate(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
+            <div className="flex gap-4 items-start">
+              <div className="mt-1">
+                <LayoutList className="w-10 h-10 text-[#2F6B7C]" />
               </div>
-
-              <div className="bg-[#F59E0B] text-black p-6 rounded-lg">
-                <div className="text-3xl font-bold mb-2">
-                  ${annualSavings.toLocaleString()}
+              <div>
+                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
+                  Campus-Wide Dashboard
                 </div>
-                <div className="text-sm mb-4">Annual Savings</div>
-                <div className="flex gap-6 text-sm">
-                  <div>
-                    <div className="font-bold">{roi}x</div>
-                    <div>ROI</div>
-                  </div>
-                  <div>
-                    <div className="font-bold">{paybackMonths} months</div>
-                    <div>Payback</div>
-                  </div>
-                </div>
+                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
+                  Admins can view all logged items across campus buildings in one place.
+                </p>
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm p-8 rounded-lg">
-              <h3 className="text-2xl font-bold text-white mb-6">
-                Building Time Saved
-              </h3>
-
-              <div className="space-y-6 mb-8">
-                <div>
-                  <label className="block text-white mb-2">
-                    Items/month: {itemsPerMonth}
-                  </label>
-                  <input
-                    type="range"
-                    min="100"
-                    max="2000"
-                    step="100"
-                    value={itemsPerMonth}
-                    onChange={(e) => setItemsPerMonth(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white mb-2">
-                    Student hourly rate: ${studentHourlyRate}
-                  </label>
-                  <input
-                    type="range"
-                    min="10"
-                    max="25"
-                    value={studentHourlyRate}
-                    onChange={(e) => setStudentHourlyRate(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white mb-2">
-                    Buildings: {numBuildings}
-                  </label>
-                  <input
-                    type="range"
-                    min="5"
-                    max="20"
-                    value={numBuildings}
-                    onChange={(e) => setNumBuildings(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
+            <div className="flex gap-4 items-start">
+              <div className="mt-1">
+                <ArrowLeftRight className="w-10 h-10 text-[#E3B15A]" />
               </div>
-
-              <div className="bg-[#F59E0B] text-black p-6 rounded-lg">
-                <div className="text-3xl font-bold mb-2">
-                  ${costSavings.toLocaleString()}/month
+              <div>
+                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
+                  Transfer Logged Items
                 </div>
-                <div className="text-sm mb-4">Cost Savings</div>
-                <div className="flex gap-6 text-sm">
-                  <div>
-                    <div className="font-bold">{hoursSavedPerMonth} hrs</div>
-                    <div>Time Saved</div>
-                  </div>
-                  <div>
-                    <div className="font-bold">{hoursPerBuilding} hrs</div>
-                    <div>Per Building</div>
-                  </div>
-                </div>
+                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
+                  Move logged items to another location&apos;s portal without creating duplicate entries.
+                </p>
               </div>
             </div>
-          </div>
 
-          <div className="text-center mt-12">
-            <button
-              onClick={() => setShowContactModal(true)}
-              className="px-8 py-4 bg-[#F59E0B] text-black rounded-lg hover:bg-[#D97706] font-bold text-lg"
-            >
-              Book Demo
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-4">
-            <div className="inline-block bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-bold mb-4">
-              🔥 Limited Spring Pilot Spots Available
-            </div>
-          </div>
-          <h2 className="text-4xl font-bold text-center text-black mb-4">
-            Simple Campus-Wide Pricing
-          </h2>
-          <p className="text-center text-gray-600 mb-12 text-lg">
-            One price for unlimited buildings and staff
-          </p>
-
-          <div className="max-w-md mx-auto bg-white rounded-lg shadow-xl border-4 border-[#3B82F6] p-8 relative">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#F59E0B] text-black px-6 py-2 rounded-full font-bold text-sm">
-              MOST POPULAR
-            </div>
-            <h3 className="text-2xl font-bold text-black mb-6">Campus Plan</h3>
-
-            <div className="mb-6">
-              <div className="text-4xl font-bold text-black">
-                $6,000<span className="text-xl text-gray-600">/year</span>
+            <div className="flex gap-4 items-start">
+              <div className="mt-1">
+                <PieChart className="w-10 h-10 text-[#2E6AA8]" />
               </div>
-              <div className="text-gray-600">or $500/month</div>
-            </div>
-
-            <div className="mb-8">
-              <div className="font-bold text-black mb-4">Everything Included:</div>
-              <ul className="space-y-3 text-gray-700">
-                <li>✓ Campus security dashboard</li>
-                <li>✓ Unlimited buildings</li>
-                <li>✓ AI descriptions & alerts</li>
-                <li>✓ Student search portal</li>
-                <li>✓ Training & support</li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => setShowContactModal(true)}
-              className="w-full px-6 py-4 bg-[#F59E0B] text-black rounded-lg hover:bg-[#D97706] font-bold text-lg mb-6"
-            >
-              Book Demo
-            </button>
-
-            <div className="border-t pt-6">
-              <div className="bg-[#DBEAFE] p-4 rounded-lg">
-                <div className="text-sm text-gray-600 mb-2">
-                  ⚡ Spring Launch Special:
+              <div>
+                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
+                  Live Analytics & Reports
                 </div>
-                <div className="font-bold text-black text-lg">
-                  2-month pilot: $500 total
-                </div>
-                <div className="text-sm text-gray-600 mb-2">
-                  Money-back guarantee • No setup fees
-                </div>
-                <div className="text-xs text-[#3B82F6] font-bold mt-2">
-                  Only 8 spots remaining for spring semester
-                </div>
+                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
+                  View live statistics and create custom reports on item recovery rates.
+                </p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-4xl font-bold text-center text-black mb-12">
-            Common Questions
-          </h2>
-
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg">
-                <button
-                  onClick={() => setFaqOpen(faqOpen === index ? null : index)}
-                  className="w-full p-6 text-left flex justify-between items-center hover:bg-gray-50"
-                >
-                  <span className="font-bold text-black">{faq.q}</span>
-                  {faqOpen === index ? (
-                    <ChevronUp className="w-5 h-5" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5" />
-                  )}
-                </button>
-                {faqOpen === index && (
-                  <div className="px-6 pb-6 text-gray-700">{faq.a}</div>
-                )}
-              </div>
+      {/* ROLES */}
+      <section id="roles" className="py-14 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex justify-center border-b border-gray-200">
+            {(
+              [
+                { key: "admin", label: "Admin" },
+                { key: "manager", label: "Building Manager" },
+                { key: "student", label: "Student" },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`px-6 py-4 font-semibold ${
+                  activeTab === t.key
+                    ? "text-[#2D3748] border-b-4 border-[#2E6AA8]"
+                    : "text-gray-500"
+                }`}
+              >
+                {t.label}
+              </button>
             ))}
           </div>
-        </div>
-      </section>
 
-      <footer className="bg-black text-white py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div>
-              <img
-                src="/found_folio_(6).png"
-                alt="FoundFolio"
-                className="h-10 mb-4 brightness-0 invert"
-              />
-              <p className="text-gray-400 text-sm mb-4">
-                Modern lost & found for campus buildings
-              </p>
-              <div className="flex gap-4">
-                <a href="#" className="text-gray-400 hover:text-white">
-                  Twitter
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white">
-                  LinkedIn
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-bold mb-4">Product</h3>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <a href="#how-it-works" className="hover:text-white">
-                    How It Works
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    For Campus Security
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    For Building Managers
-                  </a>
-                </li>
-                <li>
-                  <a href="#pricing" className="hover:text-white">
-                    Pricing
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-bold mb-4">Company</h3>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <a href="#" className="hover:text-white">
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Customers
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowContactModal(true);
-                    }}
-                    className="hover:text-white"
-                  >
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Blog
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-8 flex flex-wrap justify-between items-center text-sm text-gray-400">
-            <div>© 2025 FoundFolio</div>
-            <div className="flex gap-6">
-              <a href="#" className="hover:text-white">
-                Privacy
-              </a>
-              <a href="#" className="hover:text-white">
-                Terms
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {showContactModal && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setShowContactModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg max-w-md w-full p-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {!formSubmitted ? (
+          <div className="mt-10 bg-white border border-gray-200 rounded-xl p-10">
+            {activeTab === "admin" && (
               <>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-black">Book Your Demo</h3>
-                  <button
-                    onClick={() => setShowContactModal(false)}
-                    className="text-gray-400 hover:text-black"
-                    aria-label="Close"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-                <form onSubmit={handleContactSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={contactForm.name}
-                      onChange={(e) =>
-                        setContactForm({ ...contactForm, name: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="John Smith"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={contactForm.email}
-                      onChange={(e) =>
-                        setContactForm({ ...contactForm, email: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="john@university.edu"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Institution
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={contactForm.institution}
-                      onChange={(e) =>
-                        setContactForm({
-                          ...contactForm,
-                          institution: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="University Name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={contactForm.phone}
-                      onChange={(e) =>
-                        setContactForm({ ...contactForm, phone: e.target.value })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Message (optional)
-                    </label>
-                    <textarea
-                      value={contactForm.message}
-                      onChange={(e) =>
-                        setContactForm({
-                          ...contactForm,
-                          message: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows={3}
-                      placeholder="Tell us about your campus..."
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full px-6 py-3 bg-[#3B82F6] text-white rounded-lg hover:bg-[#2563EB] font-bold"
-                  >
-                    Request Demo
-                  </button>
-                </form>
+                <h3 className="text-[42px] leading-tight font-semibold text-black" style={{ fontFamily: "Poppins, system-ui" }}>
+                  Admin View
+                </h3>
+                <p className="mt-4 text-[18px] leading-[28px] text-[#212529] max-w-2xl">
+                  Oversee all campus lost and found operations with centralized dashboards,
+                  analytics, and cross-building management tools.
+                </p>
               </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-[#D1FAE5] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-[#10B981]"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold text-black mb-2">Thank You!</h3>
-                <p className="text-gray-600">We'll be in touch within 24 hours.</p>
-              </div>
+            )}
+
+            {activeTab === "manager" && (
+              <>
+                <h3 className="text-[42px] leading-tight font-semibold text-black" style={{ fontFamily: "Poppins, system-ui" }}>
+                  Building Manager View
+                </h3>
+                <p className="mt-4 text-[18px] leading-[28px] text-[#212529] max-w-2xl">
+                  Log items in seconds, keep your location organized, and route high-value items
+                  safely — without extra work.
+                </p>
+              </>
+            )}
+
+            {activeTab === "student" && (
+              <>
+                <h3 className="text-[42px] leading-tight font-semibold text-black" style={{ fontFamily: "Poppins, system-ui" }}>
+                  Student View
+                </h3>
+                <p className="mt-4 text-[18px] leading-[28px] text-[#212529] max-w-2xl">
+                  Search campus items from anywhere, see photos instantly, and avoid unnecessary
+                  trips across campus.
+                </p>
+              </>
             )}
           </div>
         </div>
-      )}
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="py-14 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <h2
+            style={{ fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", fontWeight: 600, color: "#2D3748" }}
+            className="text-[28px] mb-6"
+          >
+            Frequently Asked Questions
+          </h2>
+
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            {faqs.map((faq, idx) => {
+              const open = faqOpen === idx;
+              return (
+                <div key={idx} className="border-b border-gray-200 last:border-b-0">
+                  <button
+                    onClick={() => setFaqOpen(open ? null : idx)}
+                    className="w-full flex items-center justify-between gap-6 px-6 py-5 text-left hover:bg-gray-50"
+                  >
+                    <span className="text-[18px] font-semibold text-[#2D3748]">{faq.q}</span>
+                    {open ? (
+                      <ChevronUp className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    )}
+                  </button>
+
+                  {open && (
+                    <div className="px-6 pb-6 text-[16px] leading-[24px] text-[#212529] whitespace-pre-line">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="py-10 bg-white border-t border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-gray-500">© {new Date().getFullYear()} FoundFolio</div>
+          <div className="text-sm text-gray-500">
+            <button onClick={goToProduct} className="underline hover:text-gray-700">
+              {user ? "Open FoundFolio" : "Log in"}
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
