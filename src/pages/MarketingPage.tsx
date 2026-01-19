@@ -144,9 +144,6 @@ const MarketingPage = () => {
               <a href="#features" className="text-[#212529] hover:text-[#2D3748] font-semibold">
                 Features
               </a>
-              <a href="#roles" className="text-[#212529] hover:text-[#2D3748] font-semibold">
-                Roles
-              </a>
               <a href="#faq" className="text-[#212529] hover:text-[#2D3748] font-semibold">
                 FAQ
               </a>
