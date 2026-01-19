@@ -294,8 +294,8 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
       moveBuildingMode === "custom" ? moveCustomBuilding.trim() : moveSelectedBuilding.trim();
     const newLocation = moveNewLocation.trim();
 
-    if (!destinationBuilding || !newLocation) {
-      alert("Destination building and specific location are required.");
+    if (!destinationBuilding) {
+      alert("Destination building is required.");
       return;
     }
 
@@ -449,7 +449,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start gap-3">
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-lg text-slate-900 truncate">
+                          <h3 className="font-semibold text-lg text-slate-900 leading-snug break-words line-clamp-2 sm:line-clamp-1">
                             {item.description}
                           </h3>
 
@@ -638,7 +638,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Specific location (required)
+                  Specific location (optional)
                 </label>
                 <input
                   type="text"

@@ -43,7 +43,7 @@ export default function StaffSelectPage() {
           .from("buildings")
           .select("id,name,is_system")
           .eq("campus_slug", campus)
-          .eq("is_system", false) // ✅ hide system buildings (e.g., NDPD)
+          .eq("is_system", false) 
           .order("name");
 
         if (error) throw error;

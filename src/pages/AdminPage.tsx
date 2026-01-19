@@ -231,7 +231,10 @@ export default function AdminPage() {
                 className="w-12 h-12 object-contain"
               />
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Admin</h1>
+                <h1 className="text-xl font-bold text-slate-900">
+                  {selectedBuilding === "All Buildings" ? "Admin" : selectedBuilding}
+                  </h1>
+
                 <p className="text-sm text-slate-600">{campusName}</p>
               </div>
             </div>
@@ -261,33 +264,32 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Building filter */}
-        <div className="mb-6 bg-white rounded-xl shadow-md p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-slate-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-slate-700">Building</h3>
-                {isBuildingManager && <p className="text-xs text-slate-500">Locked to your building</p>}
-              </div>
-            </div>
-
-            <select
-              value={selectedBuilding}
-              onChange={(e) => setSelectedBuilding(e.target.value)}
-              disabled={isBuildingManager}
-              className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] font-medium text-[#374151] disabled:opacity-70"
-            >
-              {buildingNames.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+        {!isBuildingManager && (
+    <div className="mb-6 bg-white rounded-xl shadow-md p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-slate-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-slate-700">Building</h3>
           </div>
         </div>
 
+        <select
+          value={selectedBuilding}
+          onChange={(e) => setSelectedBuilding(e.target.value)}
+          className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] font-medium text-[#374151]"
+        >
+          {buildingNames.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )}
         <div className="space-y-8">
           {showCampusAdminPanels ? (
             <>
@@ -328,7 +330,7 @@ export default function AdminPage() {
                       }`}
                     >
                       <Inbox className="w-5 h-5" />
-                      Intake
+                      Add Item 
                     </button>
                   )}
 

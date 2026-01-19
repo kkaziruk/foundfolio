@@ -210,7 +210,7 @@ const MarketingPage = () => {
           </span>
 
           {/* SECOND LINE — rotating word */}
-          <span className="block mt-2 min-h-[1.2em] text-4xl md:text-5xl">
+          <span className="block mt-2 min-h-[1.2em] text-4xl md:text-5xl text-[#3B82F6]">
             <span
               key={rotatingWord}
               className="inline-block animate-fade"

@@ -480,6 +480,20 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             )}
           </div>
 
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Description *</label>
+            <input
+              type="text"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              required
+              placeholder="e.g., Black plastic water bottle"
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+            />
+          </div>
+
           {/* Building */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Building *</label>
@@ -526,20 +540,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
               onChange={handleInputChange}
               required
               placeholder="e.g., 2nd floor near water fountain, Room 234"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Description *</label>
-            <input
-              type="text"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              required
-              placeholder="e.g., Black plastic water bottle"
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
             />
           </div>
