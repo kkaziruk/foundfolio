@@ -348,7 +348,7 @@ const MarketingPage = () => {
       </section>
 
       {/* ROLES */}
-      <section id="roles" className="py-14 bg-white">
+      <section id="roles" className="py-10 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex justify-center border-b border-gray-200">
             {(
@@ -361,7 +361,7 @@ const MarketingPage = () => {
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`px-6 py-4 font-semibold ${
+                className={`px-5 py-3 font-semibold ${
                   activeTab === t.key
                     ? "text-[#2D3748] border-b-4 border-[#2E6AA8]"
                     : "text-gray-500"
@@ -376,14 +376,14 @@ const MarketingPage = () => {
   <>
     {/* Headline copy (NOT redundant h3) */}
     <p
-      className="mt-4 max-w-lg mx-auto text-center text-[28px] leading-[36px] font-semibold text-[#1f3a5f]"
+      className="mt-2 max-w-lg mx-auto text-center text-[18px] sm:text-[20px] leading-[28px] font-medium text-[#1f3a5f]"
       style={{ fontFamily: "Poppins, system-ui" }}
     >
       Centralized dashboards, analytics, and cross-building controls.
     </p>
 
     {/* Screenshot with hover zoom */}
-    <div className="group mt-10 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
+    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
       <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.40]">
         <img
           src="/admin.png"
@@ -399,13 +399,13 @@ const MarketingPage = () => {
 {activeTab === "manager" && (
   <>
     <p
-      className="mt-4 max-w-xl mx-auto text-center text-[28px] leading-[36px] font-semibold text-[#1f3a5f]"
+      className="mt-2 max-w-xl mx-auto text-center text-[18px] sm:text-[20px] leading-[28px] font-medium text-[#1f3a5f]"
       style={{ fontFamily: "Poppins, system-ui" }}
     >
       Log items in seconds, keep your location organized, and route high-value items safely.
     </p>
 
-    <div className="group mt-10 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
+    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
       <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.20]">
         <img
           src="/manager.png"
@@ -421,13 +421,13 @@ const MarketingPage = () => {
 {activeTab === "student" && (
   <>
     <p
-      className="mt-4 max-w-xl mx-auto text-center text-[28px] leading-[36px] font-semibold text-[#1f3a5f]"
+      className="mt-2 max-w-xl mx-auto text-center text-[18px] sm:text-[20px] leading-[28px] font-medium text-[#1f3a5f]"
       style={{ fontFamily: "Poppins, system-ui" }}
     >
       Search campus items from anywhere and avoid unnecessary trips.
     </p>
 
-    <div className="group mt-10 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
+    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
       <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.10]">
         <img
           src="/student.png"
