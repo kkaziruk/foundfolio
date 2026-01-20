@@ -353,9 +353,9 @@ const MarketingPage = () => {
           <div className="flex justify-center border-b border-gray-200">
             {(
               [
-                { key: "admin", label: "Admin" },
-                { key: "manager", label: "Building Manager" },
-                { key: "student", label: "Student" },
+                { key: "admin", label: "Admin View" },
+                { key: "manager", label: "Building Manager View" },
+                { key: "student", label: "Student View" },
               ] as const
             ).map((t) => (
               <button
@@ -372,43 +372,75 @@ const MarketingPage = () => {
             ))}
           </div>
 
-          <div className="mt-10 bg-white border border-gray-200 rounded-xl p-10">
-            {activeTab === "admin" && (
-              <>
-                <h3 className="text-[42px] leading-tight font-semibold text-black" style={{ fontFamily: "Poppins, system-ui" }}>
-                  Admin View
-                </h3>
-                <p className="mt-4 text-[18px] leading-[28px] text-[#212529] max-w-2xl">
-                  Oversee all campus lost and found operations with centralized dashboards,
-                  analytics, and cross-building management tools.
-                </p>
-              </>
-            )}
+          {activeTab === "admin" && (
+  <>
+    {/* Headline copy (NOT redundant h3) */}
+    <p
+      className="mt-4 max-w-lg mx-auto text-center text-[28px] leading-[36px] font-semibold text-[#1f3a5f]"
+      style={{ fontFamily: "Poppins, system-ui" }}
+    >
+      Centralized dashboards, analytics, and cross-building controls.
+    </p>
 
-            {activeTab === "manager" && (
-              <>
-                <h3 className="text-[42px] leading-tight font-semibold text-black" style={{ fontFamily: "Poppins, system-ui" }}>
-                  Building Manager View
-                </h3>
-                <p className="mt-4 text-[18px] leading-[28px] text-[#212529] max-w-2xl">
-                  Log items in seconds, keep your location organized, and route high-value items
-                  safely — without extra work.
-                </p>
-              </>
-            )}
+    {/* Screenshot with hover zoom */}
+    <div className="group mt-10 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
+      <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.40]">
+        <img
+          src="/admin.png"
+          alt="FoundFolio admin dashboard"
+          className="mx-auto w-full max-w-[980px] h-auto max-h-[520px] object-contain object-center"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  </>
+)}
 
-            {activeTab === "student" && (
-              <>
-                <h3 className="text-[42px] leading-tight font-semibold text-black" style={{ fontFamily: "Poppins, system-ui" }}>
-                  Student View
-                </h3>
-                <p className="mt-4 text-[18px] leading-[28px] text-[#212529] max-w-2xl">
-                  Search campus items from anywhere, see photos instantly, and avoid unnecessary
-                  trips across campus.
-                </p>
-              </>
-            )}
-          </div>
+{activeTab === "manager" && (
+  <>
+    <p
+      className="mt-4 max-w-xl mx-auto text-center text-[28px] leading-[36px] font-semibold text-[#1f3a5f]"
+      style={{ fontFamily: "Poppins, system-ui" }}
+    >
+      Log items in seconds, keep your location organized, and route high-value items safely.
+    </p>
+
+    <div className="group mt-10 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
+      <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.20]">
+        <img
+          src="/manager.png"
+          alt="FoundFolio building manager dashboard"
+          className="mx-auto w-full max-w-[1100px] h-auto max-h-[520px] object-contain object-center"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  </>
+)}
+
+{activeTab === "student" && (
+  <>
+    <p
+      className="mt-4 max-w-xl mx-auto text-center text-[28px] leading-[36px] font-semibold text-[#1f3a5f]"
+      style={{ fontFamily: "Poppins, system-ui" }}
+    >
+      Search campus items from anywhere and avoid unnecessary trips.
+    </p>
+
+    <div className="group mt-10 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
+      <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.10]">
+        <img
+          src="/student.png"
+          alt="FoundFolio student search experience"
+          className="mx-auto w-full max-w-[1100px] h-auto max-h-[520px] object-contain object-center"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  </>
+)}
+
+
         </div>
       </section>
 

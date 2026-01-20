@@ -295,60 +295,60 @@ export default function AdminPage() {
             <>
               {/* Admin Tabs */}
               <div className="bg-white rounded-xl shadow-md p-6">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setAdminView("analytics")}
-                    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-                      adminView === "analytics"
-                        ? "bg-[#3B82F6] text-white"
-                        : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-                    }`}
-                  >
-                    <BarChart3 className="w-5 h-5" />
-                    Analytics
-                  </button>
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    <button
+      onClick={() => setAdminView("analytics")}
+      className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+        adminView === "analytics"
+          ? "bg-[#3B82F6] text-white"
+          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+      }`}
+    >
+      <BarChart3 className="w-5 h-5 shrink-0" />
+      <span className="truncate">Analytics</span>
+    </button>
 
-                  <button
-                    onClick={() => setAdminView("buildings")}
-                    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-                      adminView === "buildings"
-                        ? "bg-[#3B82F6] text-white"
-                        : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-                    }`}
-                  >
-                    <Building2 className="w-5 h-5" />
-                    Buildings
-                  </button>
+    <button
+      onClick={() => setAdminView("buildings")}
+      className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+        adminView === "buildings"
+          ? "bg-[#3B82F6] text-white"
+          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+      }`}
+    >
+      <Building2 className="w-5 h-5 shrink-0" />
+      <span className="truncate">Buildings</span>
+    </button>
 
-                  {isCampusAdmin && (
-                    <button
-                      onClick={() => setAdminView("intake")}
-                      className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-                        adminView === "intake"
-                          ? "bg-[#3B82F6] text-white"
-                          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-                      }`}
-                    >
-                      <Inbox className="w-5 h-5" />
-                      Add Item 
-                    </button>
-                  )}
+    {isCampusAdmin && (
+      <button
+        onClick={() => setAdminView("intake")}
+        className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+          adminView === "intake"
+            ? "bg-[#3B82F6] text-white"
+            : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+        }`}
+      >
+        <Inbox className="w-5 h-5 shrink-0" />
+        <span className="truncate">Add Item</span>
+      </button>
+    )}
 
-                  {isCampusAdmin && (
-                    <button
-                      onClick={() => setAdminView("staff")}
-                      className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-                        adminView === "staff"
-                          ? "bg-[#3B82F6] text-white"
-                          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-                      }`}
-                    >
-                      <User className="w-5 h-5" />
-                      Staff
-                    </button>
-                  )}
-                </div>
-              </div>
+    {isCampusAdmin && (
+      <button
+        onClick={() => setAdminView("staff")}
+        className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+          adminView === "staff"
+            ? "bg-[#3B82F6] text-white"
+            : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+        }`}
+      >
+        <User className="w-5 h-5 shrink-0" />
+        <span className="truncate">Staff</span>
+      </button>
+    )}
+  </div>
+</div>
 
               {adminView === "analytics" && <AdminDashboard campus={campus} building={selectedBuilding} />}
 

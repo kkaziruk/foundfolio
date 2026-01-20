@@ -74,58 +74,86 @@ export default function StaffSelectPage() {
     navigate(`/staff/${campus}/login`, { replace: false });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-slate-600">Loading staff options…</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-semibold text-slate-900">Staff sign-in</h1>
-          <Link to="/login" className="text-sm text-slate-600 hover:text-slate-900 underline">
+  <div className="min-h-screen bg-white px-4 py-12">
+    <div className="mx-auto w-full max-w-2xl">
+      {/* Header */}
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+          Staff Access
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Manage lost & found for{" "}
+          <span className="font-medium">{campusDisplay}</span>.
+        </p>
+      </div>
+
+      {/* Card */}
+      <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-slate-600">Select one to continue.</div>
+          <Link
+            to="/login"
+            className="text-sm text-slate-600 hover:text-slate-900 underline"
+          >
             Back
           </Link>
         </div>
 
-        <p className="text-sm text-slate-600 mb-6">
-          Select your building (manager) or campus admin for{" "}
-          <span className="font-medium">{campusDisplay}</span>.
-        </p>
-
         {error && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             {error}
           </div>
         )}
 
-        <button
-          onClick={selectAdmin}
-          className="w-full px-4 py-3 mb-4 bg-black text-white rounded-lg hover:bg-slate-800 font-medium"
-        >
-          Campus Admin
-        </button>
-
-        <div className="space-y-2">
+        <div className="mt-6 space-y-2">
+          {/* Buildings */}
           {buildings.map((b) => (
             <button
               key={b.id}
               onClick={() => selectBuilding(b)}
-              className="w-full text-left px-4 py-3 border border-slate-200 rounded-lg hover:bg-slate-50 font-medium text-slate-900"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:bg-slate-50"
             >
-              {b.name}
+              <div className="text-base font-semibold text-slate-900">
+                {b.name}
+              </div>
             </button>
           ))}
-        </div>
 
-        {buildings.length === 0 && (
-          <div className="text-sm text-slate-600 mt-4">No buildings found for this campus.</div>
-        )}
+          {buildings.length === 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              No buildings found for this campus.
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 py-2">
+            <div className="h-px flex-1 bg-slate-200" />
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              or
+            </div>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          {/* Campus Admin */}
+          <button
+            onClick={selectAdmin}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:bg-slate-50"
+          >
+            <div className="text-base font-semibold text-slate-900">
+              Campus admin
+            </div>
+            <div className="mt-1 text-sm text-slate-600">
+              Manage items across the entire campus.
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 text-center text-xs text-slate-500">
+        Secure sign in. Campus access only.
       </div>
     </div>
-  );
+  </div>
+);
+
 }
