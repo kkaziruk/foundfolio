@@ -33,7 +33,7 @@ export default function ManageStaff({ campus, buildings }: { campus: string; bui
       const { data, error } = await supabase
         .from("staff_invites")
         .select("id,email,role,building_id,created_at")
-        .eq("campus_slug", campus)
+        .eq("campus_slug", campus_slug)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -52,37 +52,43 @@ export default function ManageStaff({ campus, buildings }: { campus: string; bui
   }, [campus]);
 
   const addInvite = async () => {
-    setError("");
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) return;
+  setError("");
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail) return;
 
-    if (role === "building_manager" && !buildingId) {
-      setError("Select a building for building managers.");
-      return;
-    }
+  if (role === "building_manager" && !buildingId) {
+    setError("Select a building for building managers.");
+    return;
+  }
 
-    setSaving(true);
-    try {
-      const payload = {
-        campus_slug: campus,
-        email: cleanEmail,
-        role,
-        building_id: role === "building_manager" ? buildingId : null,
-      };
+  setSaving(true);
+  try {
+    const payload = {
+      campus_slug: campus,
+      email: cleanEmail,
+      role,
+      building_id: role === "building_manager" ? buildingId : null,
+    };
 
-      const { error } = await supabase.from("staff_invites").insert(payload);
-      if (error) throw error;
+    // 1️⃣ Insert into staff_invites
+    const { error: insertErr } = await supabase.from("staff_invites").insert(payload);
+    if (insertErr) throw insertErr;
 
-      setEmail("");
-      await loadInvites();
-    } catch (e: any) {
-      console.error(e);
-      setError(e?.message ?? "Failed to add invite.");
-    } finally {
-      setSaving(false);
-    }
-  };
+    // 2️⃣ Send Auth invite email (Edge Function)
+    const { error: fnErr } = await supabase.functions.invoke("invite-staff", {
+      body: { email: cleanEmail, campus_slug: campus },
+    });
+    if (fnErr) throw fnErr;
 
+    setEmail("");
+    await loadInvites();
+  } catch (e: any) {
+    console.error(e);
+    setError(e?.message ?? "Failed to add invite.");
+  } finally {
+    setSaving(false);
+  }
+};
   const removeInvite = async (id: string) => {
     setError("");
     try {

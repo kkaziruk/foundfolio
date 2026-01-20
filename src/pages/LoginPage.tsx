@@ -88,7 +88,7 @@ export default function LoginPage() {
                   <div className="flex-1">
                     <div className="font-medium text-slate-900">Student</div>
                     <p className="mt-1 text-sm text-slate-600">
-                      Search for lost items and report what you&apos;ve found.
+                      Search for lost items in campus buildings.
                     </p>
                   </div>
                 </div>

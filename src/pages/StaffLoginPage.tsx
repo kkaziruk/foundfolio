@@ -83,33 +83,33 @@ export default function StaffLoginPage() {
   };
 
   const sendReset = async () => {
-    if (submitting) return;
+  if (submitting) return;
 
-    const e = email.trim().toLowerCase();
-    if (!e) {
-      setError("Enter your email first.");
-      return;
-    }
+  const e = email.trim().toLowerCase();
+  if (!e) {
+    setError("Enter your email first.");
+    return;
+  }
 
-    setSubmitting(true);
-    setError("");
+  setSubmitting(true);
+  setError("");
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(e, {
-        redirectTo: `${window.location.origin}/app`,
-      });
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(e, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      // Use your existing cross-page error/toast mechanism
-      setAuthError("Password reset email sent. Check your inbox.");
-      navigate("/login", { replace: true });
-    } catch (err: any) {
-      setError(err?.message ?? "Could not send reset email.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    setAuthError("Password reset email sent. Check your inbox.");
+    // keep them in the staff flow
+    navigate(campus ? `/staff/${campus}/login` : "/staff", { replace: true });
+  } catch (err: any) {
+    setError(err?.message ?? "Could not send reset email.");
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">

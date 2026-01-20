@@ -8,6 +8,7 @@ import NotOnboardedPage from "./pages/NotOnboardedPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import StaffSelectPage from "./pages/StaffSelectPage";
 import StaffLoginPage from "./pages/StaffLoginPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Routes>
         <Route path="/" element={<MarketingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* staff selection */}
         <Route path="/staff" element={<Navigate to="/staff/nd" replace />} />
