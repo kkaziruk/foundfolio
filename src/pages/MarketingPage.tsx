@@ -202,7 +202,7 @@ const MarketingPage = () => {
           }}
         >
           {/* FIRST LINE — locked to one line */}
-          <span className="block text-4xl md:text-5xl whitespace-nowrap">
+          <span className="block text-4xl md:text-5xl whitespace-normal md:whitespace-nowrap break-words">
             Campus Lost and Found
           </span>
 
