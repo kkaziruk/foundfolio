@@ -33,7 +33,7 @@ export default function ManageStaff({ campus, buildings }: { campus: string; bui
       const { data, error } = await supabase
         .from("staff_invites")
         .select("id,email,role,building_id,created_at")
-        .eq("campus_slug", campus_slug)
+        .eq("campus_slug", campus)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
