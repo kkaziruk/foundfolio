@@ -75,10 +75,19 @@ export default function ManageStaff({ campus, buildings }: { campus: string; bui
     if (insertErr) throw insertErr;
 
     // 2️⃣ Send Auth invite email (Edge Function)
-    const { error: fnErr } = await supabase.functions.invoke("invite-staff", {
-      body: { email: cleanEmail, campus_slug: campus },
-    });
-    if (fnErr) throw fnErr;
+const { data, error: fnErr } = await supabase.functions.invoke(
+  "invite-staff",
+  {
+    body: { email: cleanEmail, campus_slug: campus },
+  }
+);
+
+if (fnErr) {
+  console.error("Invite staff function error:", fnErr);
+  throw new Error(fnErr.message);
+}
+
+console.log("Invite staff success:", data);
 
     setEmail("");
     await loadInvites();
