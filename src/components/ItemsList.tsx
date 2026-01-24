@@ -57,9 +57,8 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   // Move modal state
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [moveTargetItem, setMoveTargetItem] = useState<Item | null>(null);
-  const [moveBuildingMode, setMoveBuildingMode] = useState<"select" | "custom">("select");
+  const [moveMode, setMoveMode] = useState<"ndpd" | "other">("ndpd");
   const [moveSelectedBuilding, setMoveSelectedBuilding] = useState<string>("");
-  const [moveCustomBuilding, setMoveCustomBuilding] = useState<string>("NDPD");
   const [moveNewLocation, setMoveNewLocation] = useState<string>("");
   const [moveAppendNote, setMoveAppendNote] = useState<boolean>(true);
   const [moveSubmitting, setMoveSubmitting] = useState(false);
@@ -267,35 +266,42 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
   // ===== Move flow =====
   const openMoveModal = (item: Item) => {
-    setMoveTargetItem(item);
+  setMoveTargetItem(item);
 
-    const names = buildings.map((b) => b.name);
-    const defaultName =
-      names.includes(item.building) ? item.building : names[0] ?? item.building;
+  // Default to NDPD tab
+  setMoveMode("ndpd");
 
-    setMoveBuildingMode("select");
-    setMoveSelectedBuilding(defaultName);
-    setMoveCustomBuilding("NDPD");
-    setMoveNewLocation(item.specific_location || "");
-    setMoveAppendNote(true);
-    setShowMoveModal(true);
-  };
+  // Preselect something sensible for "Other building" tab (used only if they switch)
+  const names = buildings.map((b) => b.name);
+  const defaultName = names.includes(item.building) ? item.building : names[0] ?? "";
+  setMoveSelectedBuilding(defaultName);
+
+  setMoveNewLocation(item.specific_location || "");
+  setMoveAppendNote(true);
+  setShowMoveModal(true);
+};
 
   const closeMoveModal = () => {
-    setShowMoveModal(false);
-    setMoveTargetItem(null);
-    setMoveSubmitting(false);
-  };
+  setShowMoveModal(false);
+  setMoveTargetItem(null);
+  setMoveSubmitting(false);
+
+  // reset modal UI for next open
+  setMoveMode("ndpd");
+  setMoveSelectedBuilding("");
+  setMoveNewLocation("");
+  setMoveAppendNote(true);
+};
 
   const handleMoveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!moveTargetItem) return;
 
     const destinationBuilding =
-      moveBuildingMode === "custom" ? moveCustomBuilding.trim() : moveSelectedBuilding.trim();
+      moveMode === "ndpd" ? "NDPD" : moveSelectedBuilding.trim();
     const newLocation = moveNewLocation.trim();
 
-    if (!destinationBuilding) {
+    if (moveMode === "other" && !destinationBuilding) {
       alert("Destination building is required.");
       return;
     }
@@ -361,7 +367,10 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <div
+  className="animate-spin rounded-full h-12 w-12 border-b-2"
+  style={{ borderBottomColor: BRAND.ink }}
+/>
       </div>
     );
   }
@@ -547,212 +556,162 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
           {hasMore && (
             <div className="p-6 text-center border-t border-slate-200">
               <button
-                onClick={() => loadItems(false)}
-                disabled={loadingMore}
-                className="px-6 py-3 bg-[#3B82F6] text-white rounded-lg hover:bg-[#2563EB] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loadingMore ? "Loading..." : `Load More (${items.length} loaded)`}
-              </button>
+  onClick={() => loadItems(false)}
+  disabled={loadingMore}
+  className="rounded-xl px-6 py-3 text-sm font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+  style={{ backgroundColor: BRAND.ink }}
+  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
+  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
+>
+  {loadingMore ? "Loading..." : `Load More (${items.length} loaded)`}
+</button>
             </div>
           )}
         </>
       )}
 
       {/* Move Modal */}
-      {showMoveModal && moveTargetItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <MoveRight className="text-blue-600" /> Move Item
-              </h3>
-              <button onClick={closeMoveModal} className="p-2 hover:bg-slate-100 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
+{showMoveModal && moveTargetItem && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <MoveRight style={{ color: BRAND.accent }} />
+          Move Item
+        </h3>
+        <button onClick={closeMoveModal} className="p-2 hover:bg-slate-100 rounded-lg">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <p className="text-sm font-medium text-slate-700 mb-1">Item:</p>
+        <p className="font-semibold text-slate-900">{moveTargetItem.description}</p>
+        <p className="text-xs text-slate-600 mt-1">
+          Current: {displayBuildingName(campus, moveTargetItem.building)} ·{" "}
+          {moveTargetItem.specific_location}
+        </p>
+      </div>
+
+      <form onSubmit={handleMoveSubmit} className="space-y-4">
+        {/* Tabs */}
+        <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+          <button
+            type="button"
+            onClick={() => setMoveMode("ndpd")}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-extrabold transition ${
+              moveMode === "ndpd"
+                ? "bg-white shadow-sm ring-1 ring-slate-200 text-slate-900"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {displayBuildingName(campus, "NDPD")}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMoveMode("other")}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-extrabold transition ${
+              moveMode === "other"
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Other building
+          </button>
+        </div>
+
+        {/* Destination */}
+        {moveMode === "ndpd" ? (
+          <div>
+            <label className="block text-sm font-extrabold text-slate-800 mb-2">
+              Destination building
+            </label>
+            <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 font-semibold">
+              {displayBuildingName(campus, "NDPD")}
             </div>
-
-            <div className="mb-4 p-4 bg-slate-50 rounded-lg">
-              <p className="text-sm font-medium text-slate-700 mb-1">Item:</p>
-              <p className="font-semibold text-slate-900">{moveTargetItem.description}</p>
-              <p className="text-xs text-slate-600 mt-1">
-                Current: {displayBuildingName(campus, moveTargetItem.building)} ·{" "}
-                {moveTargetItem.specific_location}
-              </p>
-            </div>
-
-            <form onSubmit={handleMoveSubmit} className="space-y-4">
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMoveBuildingMode("select")}
-                  className={`flex-1 py-2 text-sm rounded-lg border ${
-                    moveBuildingMode === "select"
-                      ? "bg-blue-50 border-blue-500 text-blue-700"
-                      : "bg-white border-slate-200 text-slate-700"
-                  }`}
-                >
-                  Select Building
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMoveBuildingMode("custom")}
-                  className={`flex-1 py-2 text-sm rounded-lg border ${
-                    moveBuildingMode === "custom"
-                      ? "bg-blue-50 border-blue-500 text-blue-700"
-                      : "bg-white border-slate-200 text-slate-700"
-                  }`}
-                >
-                  Custom Building
-                </button>
-              </div>
-
-              {moveBuildingMode === "select" ? (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Destination building
-                  </label>
-                  <select
-                    value={moveSelectedBuilding}
-                    onChange={(e) => setMoveSelectedBuilding(e.target.value)}
-                    className="w-full p-2 border rounded-lg"
-                    disabled={buildingsLoading}
-                  >
-                    {buildings.length === 0 ? (
-                      <option value={moveTargetItem.building}>
-                        {displayBuildingName(campus, moveTargetItem.building)} (current)
-                      </option>
-                    ) : (
-                      buildings.map((b) => (
-                        <option key={b.id} value={b.name}>
-                          {b.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  {buildingsLoading && (
-                    <p className="text-xs text-slate-500 mt-2">Loading buildings…</p>
-                  )}
-                </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Default route for items transferred to campus police storage.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-extrabold text-slate-800 mb-2">
+              Destination building
+            </label>
+            <select
+              value={moveSelectedBuilding}
+              onChange={(e) => setMoveSelectedBuilding(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
+              disabled={buildingsLoading}
+            >
+              {buildings.length === 0 ? (
+                <option value={moveTargetItem.building}>
+                  {displayBuildingName(campus, moveTargetItem.building)} (current)
+                </option>
               ) : (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Destination building
-                  </label>
-                  <input
-                    type="text"
-                    value={moveCustomBuilding}
-                    onChange={(e) => setMoveCustomBuilding(e.target.value)}
-                    placeholder="e.g. NDPD, Warehouse"
-                    className="w-full p-2 border rounded-lg"
-                  />
-                </div>
+                buildings.map((b) => (
+                  <option key={b.id} value={b.name}>
+                    {b.name}
+                  </option>
+                ))
               )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Specific location (optional)
-                </label>
-                <input
-                  type="text"
-                  value={moveNewLocation}
-                  onChange={(e) => setMoveNewLocation(e.target.value)}
-                  placeholder="e.g. Front desk drawer"
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div>
-
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={moveAppendNote}
-                  onChange={(e) => setMoveAppendNote(e.target.checked)}
-                />
-                Add automatic move note to history
-              </label>
-
-              <div className="flex gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={closeMoveModal}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={moveSubmitting}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {moveSubmitting ? "Moving..." : "Confirm Move"}
-                </button>
-              </div>
-            </form>
+            </select>
+            {buildingsLoading && (
+              <p className="text-xs text-slate-500 mt-2">Loading buildings…</p>
+            )}
           </div>
+        )}
+
+        {/* Location */}
+        <div>
+          <label className="block text-sm font-extrabold text-slate-800 mb-2">
+            Specific location (optional)
+          </label>
+          <input
+            type="text"
+            value={moveNewLocation}
+            onChange={(e) => setMoveNewLocation(e.target.value)}
+            placeholder="e.g. Front desk drawer"
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+            style={{ boxShadow: "none" }}
+          />
         </div>
-      )}
 
-      {/* Claim Modal */}
-      {showClaimModal && selectedItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h3 className="text-xl font-bold text-slate-900">Mark Item as Claimed</h3>
-              <button onClick={closeClaimModal} className="p-2 hover:bg-slate-100 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={moveAppendNote}
+            onChange={(e) => setMoveAppendNote(e.target.checked)}
+          />
+          Add automatic move note to history
+        </label>
 
-            <form onSubmit={handleClaimSubmit} className="p-6 space-y-4">
-              <div className="p-4 bg-slate-50 rounded-lg">
-                <p className="text-sm font-medium text-slate-700 mb-1">Item:</p>
-                <p className="font-semibold text-slate-900">{selectedItem.description}</p>
-              </div>
+        <div className="flex gap-2 pt-2">
+          <button
+            type="button"
+            onClick={closeMoveModal}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Owner Name *</label>
-                <input
-                  type="text"
-                  value={ownerName}
-                  onChange={(e) => setOwnerName(e.target.value)}
-                  required
-                  placeholder="Enter owner's full name"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10B981]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Owner Email *</label>
-                <input
-                  type="email"
-                  value={ownerEmail}
-                  onChange={(e) => setOwnerEmail(e.target.value)}
-                  required
-                  placeholder="Enter owner's email"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10B981]"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeClaimModal}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isClaiming}
-                  className="flex-1 rounded-xl px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-style={{ backgroundColor: BRAND.ink }}
-                >
-                  {isClaiming ? "Processing..." : "Confirm Claim"}
-                </button>
-              </div>
-            </form>
-          </div>
+          <button
+  type="submit"
+  disabled={moveSubmitting}
+  className="flex-1 rounded-xl px-4 py-3 text-sm font-extrabold text-white disabled:opacity-50"
+  style={{ backgroundColor: BRAND.ink }}
+  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
+  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
+>
+  {moveSubmitting ? "Moving..." : "Confirm move"}
+</button>
         </div>
-      )}
+      </form>
+    </div>
+  </div>
+)}
+
 
       {/* Export Modal */}
       {showExportModal && (

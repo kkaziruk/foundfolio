@@ -530,7 +530,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
                       {/* subtle empty-state so it doesn’t feel blank */}
                       <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                        Tip: include the item and any labels in frame for best results.
+                        Tip: include the item and any labels in frame for best results. Try not to include brand names.
                       </div>
                     </button>
 
