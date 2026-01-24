@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, X, Sparkles } from "lucide-react";
+import {
+  Camera,
+  X,
+  Sparkles,
+  Image as ImageIcon,
+  FileText,
+  Building2,
+  MapPin,
+  Tag,
+  StickyNote,
+  Clock,
+} from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { BRAND } from "../lib/brand";
 
 interface AddItemFormProps {
   onSuccess: () => void;
-  campus: string; // campus_slug (e.g., "nd")
-  building?: string; // optional lock: if passed and not "All Buildings", we lock to it
+  campus: string;
+  building?: string;
 }
 
 type BuildingRow = { id: string; name: string };
@@ -19,17 +31,13 @@ type CategoryRow = {
 type UploadResult = { publicUrl: string; path: string };
 
 function todayISODate() {
-  return new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  return new Date().toISOString().split("T")[0];
 }
 
 function sanitizeFilename(name: string) {
   return name.replace(/[^\w.\-]+/g, "_");
 }
 
-/**
- * Upload photo to Supabase Storage and return both the public URL and the storage path.
- * Requires bucket: "item-photos" (PUBLIC read is easiest for AI to fetch images)
- */
 async function uploadItemPhoto(file: File, campus_slug: string): Promise<UploadResult> {
   const bucket = "item-photos";
 
@@ -60,6 +68,38 @@ async function deleteItemPhoto(path: string) {
   if (error) console.warn("Failed to delete photo from storage:", error);
 }
 
+function FieldLabel({
+  icon: Icon,
+  text,
+  required,
+  ai,
+}: {
+  icon: React.ElementType;
+  text: string;
+  required?: boolean;
+  ai?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-sm font-semibold text-slate-800">
+          {text} {required ? <span className="text-slate-500">*</span> : null}
+        </span>
+      </div>
+
+      {ai ? (
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700">
+          <Sparkles className="h-3.5 w-3.5" />
+          Auto-filled
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function AddItemForm({ onSuccess, campus, building }: AddItemFormProps) {
   const lockedBuilding = useMemo(() => !!building && building !== "All Buildings", [building]);
 
@@ -67,7 +107,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
-  // Photo preview is a local Object URL (NOT stored in DB)
   const [photoPreview, setPhotoPreview] = useState<string>("");
   const [uploadedPhotoPath, setUploadedPhotoPath] = useState<string>("");
 
@@ -79,13 +118,19 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
   const [formData, setFormData] = useState({
     description: "",
-    category: "", // category NAME (matches categories.name)
+    category: "",
     building: lockedBuilding ? (building as string) : "",
     specific_location: "",
     additional_notes: "",
     photo_url: null as string | null,
     sensitive: false,
     is_high_value: false,
+  });
+
+  const [aiFilled, setAiFilled] = useState({
+    description: false,
+    category: false,
+    specific_location: false,
   });
 
   const findCategoryByName = (name: string) =>
@@ -99,16 +144,13 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     };
   };
 
-  // Load buildings + categories for this campus
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       setLoadingOptions(true);
-
       try {
         const [{ data: bData, error: bErr }, { data: cData, error: cErr }] = await Promise.all([
-          // A) FILTER OUT SYSTEM BUILDINGS
           supabase
             .from("buildings")
             .select("id,name")
@@ -124,7 +166,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
         if (bErr) throw bErr;
         if (cErr) throw cErr;
-
         if (cancelled) return;
 
         const b = (bData ?? []) as BuildingRow[];
@@ -138,21 +179,18 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             ? (building as string)
             : prev.building || b[0]?.name || "";
 
-          // Prefer "Other" if present; else first category
-          const other = c.find((x) => x.name === "Other");
+          const other =
+            c.find((x) => x.name === "Other / Unclassified") ?? c.find((x) => x.name === "Other");
           const nextCategory = prev.category || other?.name || c[0]?.name || "";
 
-          const flags = {
-            is_high_value: (findCategoryByName(nextCategory)?.is_high_value === true) || false,
-            sensitive: (findCategoryByName(nextCategory)?.is_sensitive === true) || false,
-          };
+          const flags = categoryFlagsFromName(nextCategory);
 
           return {
             ...prev,
             building: nextBuilding,
             category: nextCategory,
-            is_high_value: prev.is_high_value || flags.is_high_value,
-            sensitive: prev.sensitive || flags.sensitive,
+            is_high_value: prev.is_high_value || flags.isHighValue,
+            sensitive: prev.sensitive || flags.isSensitive,
           };
         });
       } catch (e) {
@@ -168,13 +206,11 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campus, lockedBuilding, building]);
 
-  // Keep locked building in sync
   useEffect(() => {
     if (!lockedBuilding) return;
     setFormData((prev) => ({ ...prev, building: building as string }));
   }, [lockedBuilding, building]);
 
-  // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
       if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -187,16 +223,18 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   ) => {
     const { name, value } = e.target;
 
+    if (name === "description" || name === "category" || name === "specific_location") {
+      setAiFilled((prev) => ({ ...prev, [name]: false }));
+    }
+
     setFormData((prev) => {
       const next = { ...prev, [name]: value };
 
-      // If staff manually changes category, re-derive flags from categories table.
       if (name === "category") {
         const flags = categoryFlagsFromName(value);
         next.sensitive = flags.isSensitive;
         next.is_high_value = flags.isHighValue;
 
-        // If they manually set a sensitive category, never store photo_url
         if (next.sensitive) next.photo_url = null;
       }
 
@@ -205,22 +243,16 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   };
 
   const handleClearPhoto = async () => {
-    // Remove local preview
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview("");
 
-    // If we uploaded a photo already, delete it
     if (uploadedPhotoPath) {
       await deleteItemPhoto(uploadedPhotoPath);
       setUploadedPhotoPath("");
     }
 
-    // Clear form photo fields
-    setFormData((prev) => ({
-      ...prev,
-      photo_url: null,
-      // keep sensitive/is_high_value as-is; clearing photo shouldn't flip category logic
-    }));
+    setFormData((prev) => ({ ...prev, photo_url: null }));
+    setAiFilled({ description: false, category: false, specific_location: false });
 
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
@@ -229,13 +261,10 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Replace previous preview
     if (photoPreview) URL.revokeObjectURL(photoPreview);
-
     const previewUrl = URL.createObjectURL(file);
     setPhotoPreview(previewUrl);
 
-    // If there was an older uploaded image, remove it
     if (uploadedPhotoPath) {
       await deleteItemPhoto(uploadedPhotoPath);
       setUploadedPhotoPath("");
@@ -245,24 +274,14 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     setIsAnalyzing(false);
 
     try {
-      // 1) Upload to Storage
       const { publicUrl, path } = await uploadItemPhoto(file, campus);
       setUploadedPhotoPath(path);
 
-      // Tentatively set URL (may be wiped if sensitive)
-      setFormData((prev) => ({
-        ...prev,
-        photo_url: publicUrl,
-      }));
-
-      // 2) AI analysis (server-side decides category/sensitive/high_value)
+      setFormData((prev) => ({ ...prev, photo_url: publicUrl }));
       setIsAnalyzing(true);
 
       const { data, error } = await supabase.functions.invoke("analyze-image", {
-        body: {
-          imageUrl: publicUrl,
-          campus_slug: campus,
-        },
+        body: { imageUrl: publicUrl, campus_slug: campus },
       });
 
       if (error) {
@@ -273,12 +292,11 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
       const nextDescription = (data.description ?? "").toString();
       const nextCategory = (data.category ?? "").toString();
+      const nextLocation = (data.specific_location ?? data.location ?? "").toString();
 
-      // Primary source: AI booleans if present
       const aiSensitive = data.sensitive === true;
       const aiHighValue = data.is_high_value === true;
 
-      // Fallback source: category table flags (in case AI function doesn’t return is_high_value)
       const catFlags = nextCategory
         ? categoryFlagsFromName(nextCategory)
         : { isSensitive: false, isHighValue: false };
@@ -286,8 +304,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       const sensitive = aiSensitive || catFlags.isSensitive;
       const is_high_value = aiHighValue || catFlags.isHighValue;
 
-      // If sensitive: delete uploaded file and DO NOT store photo_url.
-      // UX: keep local preview so staff can confirm the photo they took.
       if (sensitive) {
         await deleteItemPhoto(path);
         setUploadedPhotoPath("");
@@ -297,10 +313,17 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         ...prev,
         description: nextDescription || prev.description,
         category: nextCategory || prev.category,
+        specific_location: nextLocation || prev.specific_location,
         sensitive,
         is_high_value,
         photo_url: sensitive ? null : publicUrl,
       }));
+
+      setAiFilled({
+        description: !!nextDescription,
+        category: !!nextCategory,
+        specific_location: !!nextLocation,
+      });
     } catch (err) {
       console.error("Upload/AI error:", err);
       alert(err instanceof Error ? err.message : "Failed to process image.");
@@ -314,10 +337,10 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     e.preventDefault();
     if (isSubmitting) return;
 
-    // Hard validations
     if (!formData.description.trim()) return alert("Description is required.");
     if (!formData.category.trim()) return alert("Category is required.");
-    if (!(lockedBuilding ? (building as string) : formData.building).trim()) return alert("Building is required.");
+    if (!(lockedBuilding ? (building as string) : formData.building).trim())
+      return alert("Building is required.");
     if (!formData.specific_location.trim()) return alert("Specific location is required.");
 
     setIsSubmitting(true);
@@ -325,9 +348,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     try {
       const buildingName = lockedBuilding ? (building as string) : formData.building.trim();
 
-      // Ensure building exists in public.buildings (only when not locked)
       if (!lockedBuilding) {
-        // Check DB (not client state)
         const { data: existing, error: selOneErr } = await supabase
           .from("buildings")
           .select("id")
@@ -336,19 +357,14 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
           .maybeSingle();
         if (selOneErr) throw selOneErr;
 
-        // Insert only if missing
         if (!existing) {
-          // C) explicitly set is_system false on upsert
           const { error: bErr } = await supabase.from("buildings").upsert(
             [{ name: buildingName, campus_slug: campus, is_system: false }],
-            {
-              onConflict: "campus_slug,name",
-            }
+            { onConflict: "campus_slug,name" }
           );
           if (bErr) throw bErr;
         }
 
-        // B) Refresh list and keep filtering out system buildings
         const { data: updatedBuildings, error: selErr } = await supabase
           .from("buildings")
           .select("id,name")
@@ -360,7 +376,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         setBuildings((updatedBuildings ?? []) as BuildingRow[]);
       }
 
-      // Insert the item
       const payload = {
         description: formData.description.trim(),
         category: formData.category.trim(),
@@ -368,7 +383,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         specific_location: formData.specific_location.trim(),
         additional_notes: formData.additional_notes.trim() || null,
         date_found: todayISODate(),
-        photo_url: formData.photo_url, // already null if sensitive
+        photo_url: formData.photo_url,
         sensitive: formData.sensitive,
         is_high_value: formData.is_high_value,
         campus_slug: campus,
@@ -378,7 +393,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       const { error } = await supabase.from("items").insert(payload);
       if (error) throw error;
 
-      // Reset
       const defaultCategory =
         categories.find((c) => c.name === "Other / Unclassified")?.name || categories[0]?.name || "";
 
@@ -389,7 +403,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       setFormData({
         description: "",
         category: defaultCategory,
-        // keep the last-used building (best UX)
         building: lockedBuilding ? (building as string) : buildingName,
         specific_location: "",
         additional_notes: "",
@@ -398,7 +411,8 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         is_high_value: defaultFlags.isHighValue,
       });
 
-      // Cleanup preview
+      setAiFilled({ description: false, category: false, specific_location: false });
+
       if (photoPreview) URL.revokeObjectURL(photoPreview);
       setPhotoPreview("");
       setUploadedPhotoPath("");
@@ -414,197 +428,271 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     }
   };
 
-  const analyzingBanner = (isUploading || isAnalyzing) && (
-    <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg">
-      <Sparkles className="w-5 h-5 animate-pulse" />
-      <span className="font-medium">{isUploading ? "Uploading photo..." : "Analyzing image..."}</span>
+  const busy = isUploading || isAnalyzing;
+
+  const analyzingBanner = busy ? (
+    <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <Sparkles className="h-5 w-5 animate-pulse" style={{ color: BRAND.accent }} />
+      <span className="text-sm font-semibold text-slate-900">
+        {isUploading ? "Uploading photo..." : "Analyzing image..."}
+      </span>
+      <span className="text-sm text-slate-500">Auto-fill is editable.</span>
     </div>
-  );
+  ) : null;
+
+  const aiFieldStyle = (on: boolean) =>
+    on
+      ? { backgroundColor: BRAND.sky, borderColor: BRAND.skyBorder }
+      : { backgroundColor: "white" };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md p-6">
-      <h2 className="text-2xl font-bold text-slate-900 mb-6">Add New Item</h2>
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-900">Review &amp; Log Item</h2>
+          <p className="mt-1 text-sm text-slate-600">We’ll auto-detect the item, category, and location.</p>
+        </div>
+
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          <Clock className="h-4 w-4" />
+          <span className="font-medium">Most items take under 10 seconds</span>
+        </div>
+      </div>
 
       {loadingOptions ? (
-        <div className="text-slate-600">Loading buildings and categories…</div>
+        <div className="px-6 py-6 text-slate-600">Loading buildings and categories…</div>
       ) : (
-        <div className="space-y-6">
-          {/* Photo */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Photo</label>
-
-            {photoPreview ? (
-              <div className="space-y-3">
-                <div className="relative">
-                  <img src={photoPreview} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
-                  <button
-                    type="button"
-                    onClick={handleClearPhoto}
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                    title="Remove photo"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+        <div className="px-6 py-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* LEFT */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
+                    <ImageIcon className="h-5 w-5 text-slate-700" />
+                  </span>
+                  <div className="text-sm font-extrabold text-slate-900">Photo</div>
                 </div>
 
-                {analyzingBanner}
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
+                  Auto-detects details
+                </span>
+              </div>
 
-                {formData.sensitive && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
-                    Sensitive item detected — photo will not be stored.
+              <div className="mt-5">
+                {photoPreview ? (
+                  <div className="space-y-3">
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                      <img src={photoPreview} alt="Preview" className="h-72 w-full object-cover" />
+
+                      <button
+                        type="button"
+                        onClick={handleClearPhoto}
+                        className="absolute right-3 top-3 inline-flex items-center justify-center rounded-full p-2 text-white"
+                        style={{ backgroundColor: BRAND.ink }}
+                        title="Remove photo"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+
+                      {formData.sensitive ? (
+                        <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+                          Sensitive item detected — photo will not be stored.
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {analyzingBanner}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="w-full rounded-2xl border border-slate-200 bg-white p-6 text-left hover:border-slate-300"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span
+                          className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white"
+                          style={{ backgroundColor: BRAND.ink }}
+                        >
+                          <Camera className="h-7 w-7" />
+                        </span>
+
+                        <div className="flex-1">
+                          <div className="text-base font-extrabold text-slate-900">Take / Upload Photo</div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            Tap once. We’ll fill in the details.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* subtle empty-state so it doesn’t feel blank */}
+                      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        Tip: include the item and any labels in frame for best results.
+                      </div>
+                    </button>
+
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+
+                    {analyzingBanner}
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 rounded-lg hover:border-[#3B82F6] hover:bg-[#DBEAFE] transition-colors"
-                >
-                  <Camera className="w-5 h-5 text-slate-600" />
-                  <span className="font-medium text-slate-700">Take / Upload Photo</span>
-                </button>
+            </div>
 
+            {/* RIGHT */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="mb-5">
+                <FieldLabel icon={FileText} text="Description" required ai={aiFilled.description} />
                 <input
-                  ref={cameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileSelect}
-                  className="hidden"
+                  type="text"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="e.g., Black plastic water bottle"
+                  className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                  style={{
+                    ...aiFieldStyle(aiFilled.description),
+                    boxShadow: "none",
+                  }}
                 />
-
-                {analyzingBanner}
               </div>
-            )}
-          </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Description *</label>
-            <input
-              type="text"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              required
-              placeholder="e.g., Black plastic water bottle"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-            />
-          </div>
+              <div className="mb-5">
+                <FieldLabel icon={Building2} text="Building" required />
+                {lockedBuilding ? (
+                  <input
+                    type="text"
+                    value={formData.building}
+                    disabled
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800"
+                  />
+                ) : (
+                  <select
+                    name="building"
+                    value={formData.building}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
+                  >
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
-          {/* Building */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Building *</label>
+              <div className="mb-5">
+                <FieldLabel
+                  icon={MapPin}
+                  text="Where exactly was it found?"
+                  required
+                  ai={aiFilled.specific_location}
+                />
+                <input
+                  type="text"
+                  name="specific_location"
+                  value={formData.specific_location}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="e.g., 2nd floor near water fountain, Room 234"
+                  className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                  style={{
+                    ...aiFieldStyle(aiFilled.specific_location),
+                    boxShadow: "none",
+                  }}
+                />
+              </div>
 
-            {lockedBuilding ? (
-              <input
-                type="text"
-                value={formData.building}
-                disabled
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-700"
-              />
-            ) : (
-              <select
-                name="building"
-                value={formData.building}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
+              <div className="mb-5">
+                <FieldLabel icon={Tag} text="Category" required ai={aiFilled.category} />
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full rounded-xl border px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
+                  style={{ ...aiFieldStyle(aiFilled.category) }}
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+                {(formData.is_high_value || formData.sensitive) && (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {formData.is_high_value && (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold text-slate-800">
+                        High value
+                      </span>
+                    )}
+                    {formData.sensitive && (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-900">
+                        Sensitive
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-5">
+                <FieldLabel icon={StickyNote} text="Additional Notes" />
+                <textarea
+                  name="additional_notes"
+                  value={formData.additional_notes}
+                  onChange={handleInputChange}
+                  placeholder="Any extra details staff should know…"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                  rows={3}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || busy}
+                className="w-full rounded-2xl px-6 py-4 text-base font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  backgroundColor: BRAND.ink,
+                }}
+                onMouseOver={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.inkHover;
+                }}
+                onMouseOut={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.ink;
+                }}
               >
-                {buildings.map((b) => (
-                  <option key={b.id} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            )}
+                {isSubmitting ? "Logging..." : "Log Item"}
+              </button>
 
-            {buildings.length === 0 && (
-              <div className="text-xs text-amber-700 mt-2">
-                No buildings found for this campus. Add buildings in the DB.
+              <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                <span className="inline-flex items-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
+                  Auto-fill is editable
+                </span>
+                <span>You can edit this later</span>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Specific location */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Where exactly was it found? *
-            </label>
-            <input
-              type="text"
-              name="specific_location"
-              value={formData.specific_location}
-              onChange={handleInputChange}
-              required
-              placeholder="e.g., 2nd floor near water fountain, Room 234"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-            />
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Category *</label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleInputChange}
-              required
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            {categories.length === 0 && (
-              <div className="text-xs text-amber-700 mt-2">
-                No categories found for this campus. Add categories in the DB.
-              </div>
-            )}
-
-            {(formData.is_high_value || formData.sensitive) && (
-              <div className="mt-2 flex gap-2 text-xs">
-                {formData.is_high_value && (
-                  <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                    High value
-                  </span>
-                )}
-                {formData.sensitive && (
-                  <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                    Sensitive
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Additional Notes (optional)
-            </label>
-            <textarea
-              name="additional_notes"
-              value={formData.additional_notes}
-              onChange={handleInputChange}
-              placeholder="Any extra details staff should know…"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-              rows={3}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting || isUploading || isAnalyzing}
-            className="w-full px-6 py-3 bg-[#3B82F6] text-white rounded-lg hover:bg-[#2563EB] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Adding Item..." : "Add Item"}
-          </button>
+          {categories.length === 0 ? (
+            <div className="mt-4 text-xs text-amber-700">
+              No categories found for this campus. Add categories in the DB.
+            </div>
+          ) : null}
         </div>
       )}
     </form>

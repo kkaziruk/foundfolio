@@ -88,7 +88,7 @@ export default function LoginPage() {
                   <div className="flex-1">
                     <div className="font-medium text-slate-900">Student</div>
                     <p className="mt-1 text-sm text-slate-600">
-                      Search for lost items in campus buildings.
+                      Search everything found across campus.
                     </p>
                   </div>
                 </div>
@@ -109,8 +109,7 @@ export default function LoginPage() {
                       Building Manager / Admin
                     </div>
                     <p className="mt-1 text-sm text-slate-600">
-                      Log items, manage returns, and oversee your building&apos;s
-                      lost &amp; found.
+                      Log items, manage returns, and route high-value items securely.
                     </p>
                   </div>
                 </div>

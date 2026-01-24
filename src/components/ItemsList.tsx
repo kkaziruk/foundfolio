@@ -8,6 +8,7 @@ import {
   Search,
   MoveRight,
 } from "lucide-react";
+import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
 
 interface ItemsListProps {
@@ -366,7 +367,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       {/* Header & Search */}
       <div className="p-6 border-b border-slate-200">
         <div className="flex items-start justify-between mb-4">
@@ -389,25 +390,28 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
           </div>
 
           <button
-            onClick={() => setShowExportModal(true)}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 bg-[#10B981] text-white rounded-lg hover:bg-[#059669] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-4 h-4" />
-            <span>{exporting ? "Exporting..." : "Export CSV"}</span>
-          </button>
+  onClick={() => setShowExportModal(true)}
+  disabled={exporting}
+  className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+  style={{ backgroundColor: BRAND.ink }}
+  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
+  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
+>
+  <Download className="w-4 h-4" />
+  <span>{exporting ? "Exporting..." : "Export CSV"}</span>
+</button>
         </div>
 
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search description, category, building, location, notes..."
-            className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
+  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+  <input
+    type="text"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    placeholder="Search description, category, building, location, notes..."
+    className="w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+  />
+</div>
       </div>
 
       {/* Empty */}
@@ -428,9 +432,9 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
             {items.map((item) => {
               const isSensitive = (item as any).sensitive === true; // supports your new column even if TS type isn't updated yet
               return (
-                <div key={item.id} className="p-6 hover:bg-slate-50 transition-colors">
+                <div key={item.id} className="px-6 py-5 hover:bg-slate-50 transition-colors">
                   <div className="flex gap-4">
-                    <div className="w-24 h-24 bg-slate-100 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center">
+                    <div className="w-24 h-24 rounded-2xl border border-slate-200 bg-slate-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
                       {isSensitive ? (
                         <div className="w-full h-full bg-amber-50 flex items-center justify-center">
                           <Package className="w-8 h-8 text-amber-400" />
@@ -455,10 +459,10 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             {item.status === "available" ? (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#D1FAE5] text-[#10B981] rounded-full text-sm font-medium">
-                                <Package className="w-3 h-3" />
-                                Available
-                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-800">
+  <Package className="w-3.5 h-3.5" />
+  Available
+</span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 text-[#374151] rounded-full text-sm font-medium">
                                 <CheckCircle className="w-3 h-3" />
@@ -466,9 +470,13 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                               </span>
                             )}
 
-                            <span className="px-3 py-1 bg-[#DBEAFE] text-[#3B82F6] rounded-full text-sm font-medium">
-                              {item.category}
-                            </span>
+                            <span
+  className="inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold"
+  style={{ backgroundColor: BRAND.sky, borderColor: BRAND.skyBorder, color: BRAND.ink }}
+>
+  {item.category}
+</span>
+
 
                             {isSensitive && (
                               <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-semibold">
@@ -480,19 +488,20 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
                         <div className="flex gap-2 flex-shrink-0">
                           <button
-                            onClick={() => openMoveModal(item)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="Move Item"
-                          >
-                            <MoveRight className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Delete item"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+  onClick={() => openMoveModal(item)}
+  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+  title="Move Item"
+>
+  <MoveRight className="w-5 h-5" />
+</button>
+
+<button
+  onClick={() => handleDelete(item.id)}
+  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+  title="Delete item"
+>
+  <Trash2 className="w-5 h-5" />
+</button>
                         </div>
                       </div>
 
@@ -513,11 +522,14 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
                       {item.status === "available" && (
                         <button
-                          onClick={() => openClaimModal(item)}
-                          className="mt-4 text-sm bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-                        >
-                          Mark as Claimed
-                        </button>
+  onClick={() => openClaimModal(item)}
+  className="mt-4 inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
+  style={{ backgroundColor: BRAND.ink }}
+  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
+  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
+>
+  Mark as Claimed
+</button>
                       )}
 
                       {item.additional_notes && (
@@ -549,7 +561,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
       {/* Move Modal */}
       {showMoveModal && moveTargetItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <MoveRight className="text-blue-600" /> Move Item
@@ -662,7 +674,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                 <button
                   type="button"
                   onClick={closeMoveModal}
-                  className="flex-1 py-2 border rounded-lg"
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
@@ -731,7 +743,8 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                 <button
                   type="submit"
                   disabled={isClaiming}
-                  className="flex-1 px-4 py-2 bg-[#10B981] text-white rounded-lg hover:bg-[#059669] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+style={{ backgroundColor: BRAND.ink }}
                 >
                   {isClaiming ? "Processing..." : "Confirm Claim"}
                 </button>
@@ -771,7 +784,8 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                 <button
                   onClick={handleExport}
                   disabled={exporting}
-                  className="flex-1 px-4 py-2 bg-[#10B981] text-white rounded-lg hover:bg-[#059669] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+style={{ backgroundColor: BRAND.ink }}
                 >
                   {exporting ? "Exporting..." : "Export"}
                 </button>
