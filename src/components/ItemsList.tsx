@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
+import { formatLoggedAt } from "../lib/dates";
 
 interface ItemsListProps {
   refreshTrigger: number;
@@ -524,8 +525,9 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
                           {item.specific_location}
                         </div>
                         <div>
-                          <span className="font-medium">Found:</span>{" "}
-                          {formatDate(item.date_found)}
+                          <span className="mx-2">•</span>
+                          <span className="font-medium">Logged:</span>{" "}
+                          {formatLoggedAt(item.logged_at)}
                         </div>
                       </div>
 

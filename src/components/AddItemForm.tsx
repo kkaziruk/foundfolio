@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Camera,
   X,
@@ -68,6 +68,161 @@ async function deleteItemPhoto(path: string) {
   if (error) console.warn("Failed to delete photo from storage:", error);
 }
 
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const onChange = () => setMatches(m.matches);
+    m.addEventListener("change", onChange);
+    return () => m.removeEventListener("change", onChange);
+  }, [query]);
+
+  return matches;
+}
+
+function SwipePager({
+  step,
+  setStep,
+  children,
+  canGoNext,
+  canGoPrev,
+}: {
+  step: number;
+  setStep: (n: number) => void;
+  children: React.ReactNode[];
+  canGoNext?: () => boolean;
+  canGoPrev?: () => boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
+  const startX = useRef(0);
+  const dx = useRef(0);
+  const dragging = useRef(false);
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const pages = children.length;
+
+  const setTranslate = (px: number, animate: boolean) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 260ms cubic-bezier(0.22, 1, 0.36, 1)" : "none";
+    el.style.transform = `translateX(${px}px)`;
+  };
+
+  const snapToStep = (nextStep: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const w = container.clientWidth;
+    const clamped = Math.max(0, Math.min(pages - 1, nextStep));
+    setStep(clamped);
+    setTranslate(-clamped * w, true);
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handle = () => {
+      const w = container.clientWidth;
+      setTranslate(-step * w, true);
+    };
+
+    handle();
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, [step]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    dragging.current = true;
+    setIsDragging(true);
+
+    startX.current = e.touches[0].clientX;
+    dx.current = 0;
+
+    const w = container.clientWidth;
+    setTranslate(-step * w, false);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!dragging.current) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const x = e.touches[0].clientX;
+    dx.current = x - startX.current;
+
+    const w = container.clientWidth;
+
+    // resistance at edges
+    let offset = dx.current;
+    if ((step === 0 && offset > 0) || (step === pages - 1 && offset < 0)) {
+      offset *= 0.35;
+    }
+
+    setTranslate(-step * w + offset, false);
+  };
+
+  const onTouchEnd = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    setIsDragging(false);
+
+    const container = containerRef.current;
+    if (!container) return;
+    const w = container.clientWidth;
+
+    const threshold = w * 0.22;
+    const moved = dx.current;
+
+    if (moved < -threshold) {
+      const ok = canGoNext ? canGoNext() : true;
+      if (ok) return snapToStep(step + 1);
+    }
+
+    if (moved > threshold) {
+      const ok = canGoPrev ? canGoPrev() : true;
+      if (ok) return snapToStep(step - 1);
+    }
+
+    snapToStep(step);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden"
+      style={{ touchAction: "pan-y" }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
+      <div
+        ref={trackRef}
+        className="flex"
+        style={{
+          width: `${pages * 100}%`,
+          willChange: "transform",
+          cursor: isDragging ? "grabbing" : "grab",
+        }}
+      >
+        {children.map((child, i) => (
+          <div key={i} className="w-full shrink-0">
+            {child}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FieldLabel({
   icon: Icon,
   text,
@@ -102,6 +257,9 @@ function FieldLabel({
 
 export default function AddItemForm({ onSuccess, campus, building }: AddItemFormProps) {
   const lockedBuilding = useMemo(() => !!building && building !== "All Buildings", [building]);
+
+  const isMobileSwipe = useMediaQuery("(pointer: coarse) and (max-width: 768px)");
+  const [step, setStep] = useState(0);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -218,6 +376,12 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-advance: photo chosen => step 1
+  useEffect(() => {
+    if (!isMobileSwipe) return;
+    if (formData.photo_url && step === 0) setStep(1);
+  }, [isMobileSwipe, formData.photo_url, step]);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -228,7 +392,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     }
 
     setFormData((prev) => {
-      const next = { ...prev, [name]: value };
+      const next: any = { ...prev, [name]: value };
 
       if (name === "category") {
         const flags = categoryFlagsFromName(value);
@@ -236,6 +400,10 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         next.is_high_value = flags.isHighValue;
 
         if (next.sensitive) next.photo_url = null;
+
+        // Mobile: category pick feels like "done" -> advance to step 2
+        // (only if we're currently on Identify step)
+        if (isMobileSwipe && step === 1) setStep(2);
       }
 
       return next;
@@ -251,10 +419,12 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       setUploadedPhotoPath("");
     }
 
-    setFormData((prev) => ({ ...prev, photo_url: null }));
+    setFormData((prev) => ({ ...prev, photo_url: null, sensitive: prev.sensitive ? prev.sensitive : prev.sensitive }));
     setAiFilled({ description: false, category: false, specific_location: false });
 
     if (cameraInputRef.current) cameraInputRef.current.value = "";
+
+    if (isMobileSwipe) setStep(0);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -419,6 +589,8 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
       if (cameraInputRef.current) cameraInputRef.current.value = "";
 
+      if (isMobileSwipe) setStep(0);
+
       onSuccess();
     } catch (err) {
       console.error("Error adding item:", err);
@@ -441,12 +613,27 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   ) : null;
 
   const aiFieldStyle = (on: boolean) =>
-    on
-      ? { backgroundColor: BRAND.sky, borderColor: BRAND.skyBorder }
-      : { backgroundColor: "white" };
+    on ? { backgroundColor: BRAND.sky, borderColor: BRAND.skyBorder } : { backgroundColor: "white" };
 
-  return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+  const buildingNameForValidation = lockedBuilding ? (building as string) : formData.building;
+
+  const canGoNext = () => {
+    if (step === 0) return !!formData.photo_url || !!photoPreview;
+    if (step === 1) {
+      return (
+        !!formData.description.trim() &&
+        !!formData.category.trim() &&
+        !!buildingNameForValidation.trim()
+      );
+    }
+    return true;
+  };
+
+  const canGoPrev = () => true;
+
+  // --- Desktop layout (your original UI) ---
+  const DesktopUI = (
+    <>
       <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Review &amp; Log Item</h2>
@@ -528,7 +715,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                         </div>
                       </div>
 
-                      {/* subtle empty-state so it doesn’t feel blank */}
                       <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                         Tip: include the item and any labels in frame for best results. Try not to include brand names.
                       </div>
@@ -665,9 +851,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                 type="submit"
                 disabled={isSubmitting || busy}
                 className="w-full rounded-2xl px-6 py-4 text-base font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-                style={{
-                  backgroundColor: BRAND.ink,
-                }}
+                style={{ backgroundColor: BRAND.ink }}
                 onMouseOver={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.inkHover;
                 }}
@@ -695,6 +879,286 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
           ) : null}
         </div>
       )}
+    </>
+  );
+
+  // --- Mobile swipe UI (3 pages) ---
+  const MobileUI = (
+    <>
+      <div className="border-b border-slate-100 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900">Log Item</h2>
+            <p className="mt-1 text-sm text-slate-600">Swipe to move through steps.</p>
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+            <Clock className="h-4 w-4" />
+            <span className="font-medium">~10 sec</span>
+          </div>
+        </div>
+
+        {/* progress dots */}
+        <div className="mt-3 flex items-center gap-2">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="h-1.5 w-10 rounded-full transition-all"
+              style={{
+                backgroundColor: i === step ? BRAND.ink : "#e5e7eb",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {loadingOptions ? (
+        <div className="px-5 py-6 text-slate-600">Loading…</div>
+      ) : (
+        <div className="px-5 py-5">
+          <SwipePager step={step} setStep={setStep} canGoNext={canGoNext} canGoPrev={canGoPrev}>
+            {/* Step 0: Photo */}
+            <div className="px-0">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
+                      <ImageIcon className="h-5 w-5 text-slate-700" />
+                    </span>
+                    <div className="text-sm font-extrabold text-slate-900">Photo</div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+                    <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
+                    Auto-detects
+                  </span>
+                </div>
+
+                <div className="mt-4">
+                  {photoPreview ? (
+                    <div className="space-y-3">
+                      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                        <img src={photoPreview} alt="Preview" className="h-72 w-full object-cover" />
+
+                        <button
+                          type="button"
+                          onClick={handleClearPhoto}
+                          className="absolute right-3 top-3 inline-flex items-center justify-center rounded-full p-2 text-white"
+                          style={{ backgroundColor: BRAND.ink }}
+                          title="Remove photo"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+
+                        {formData.sensitive ? (
+                          <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+                            Sensitive item detected — photo will not be stored.
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {analyzingBanner}
+                      <div className="text-xs text-slate-500">
+                        Tip: swipe left to continue when ready.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="w-full rounded-2xl border border-slate-200 bg-white p-5 text-left active:border-slate-300"
+                      >
+                        <div className="flex items-center gap-4">
+                          <span
+                            className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white"
+                            style={{ backgroundColor: BRAND.ink }}
+                          >
+                            <Camera className="h-7 w-7" />
+                          </span>
+
+                          <div className="flex-1">
+                            <div className="text-base font-extrabold text-slate-900">Take / Upload</div>
+                            <div className="mt-1 text-sm text-slate-600">
+                              One tap. We’ll fill in the details.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                          Keep labels in frame. Avoid brand names.
+                        </div>
+                      </button>
+
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+
+                      {analyzingBanner}
+                      <div className="text-xs text-slate-500">Swipe left after adding a photo.</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 1: Identify (Description + Category + Building) */}
+            <div className="px-0">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="mb-4 text-sm font-extrabold text-slate-900">Identify</div>
+
+                <div className="mb-5">
+                  <FieldLabel icon={FileText} text="Description" required ai={aiFilled.description} />
+                  <input
+                    type="text"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="e.g., Black plastic water bottle"
+                    className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                    style={{ ...aiFieldStyle(aiFilled.description), boxShadow: "none" }}
+                  />
+                </div>
+
+                <div className="mb-5">
+                  <FieldLabel icon={Tag} text="Category" required ai={aiFilled.category} />
+                  {/* keep select for now; swap to chips later if you want */}
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full rounded-xl border px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
+                    style={{ ...aiFieldStyle(aiFilled.category) }}
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {(formData.is_high_value || formData.sensitive) && (
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      {formData.is_high_value && (
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold text-slate-800">
+                          High value
+                        </span>
+                      )}
+                      {formData.sensitive && (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-900">
+                          Sensitive
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-2">
+                  <FieldLabel icon={Building2} text="Building" required />
+                  {lockedBuilding ? (
+                    <input
+                      type="text"
+                      value={formData.building}
+                      disabled
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800"
+                    />
+                  ) : (
+                    <select
+                      name="building"
+                      value={formData.building}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
+                    >
+                      {buildings.map((b) => (
+                        <option key={b.id} value={b.name}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="mt-4 text-xs text-slate-500">Swipe left to continue.</div>
+              </div>
+            </div>
+
+            {/* Step 2: Context + Submit */}
+            <div className="px-0">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="mb-4 text-sm font-extrabold text-slate-900">Context</div>
+
+                <div className="mb-5">
+                  <FieldLabel
+                    icon={MapPin}
+                    text="Where exactly was it found?"
+                    required
+                    ai={aiFilled.specific_location}
+                  />
+                  <input
+                    type="text"
+                    name="specific_location"
+                    value={formData.specific_location}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="e.g., 2nd floor near water fountain, Room 234"
+                    className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                    style={{ ...aiFieldStyle(aiFilled.specific_location), boxShadow: "none" }}
+                  />
+                </div>
+
+                <div className="mb-5">
+                  <FieldLabel icon={StickyNote} text="Additional Notes" />
+                  <textarea
+                    name="additional_notes"
+                    value={formData.additional_notes}
+                    onChange={handleInputChange}
+                    placeholder="Any extra details staff should know…"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                    rows={3}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || busy}
+                  className="w-full rounded-2xl px-6 py-4 text-base font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ backgroundColor: BRAND.ink }}
+                  onMouseOver={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.inkHover;
+                  }}
+                  onMouseOut={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.ink;
+                  }}
+                >
+                  {isSubmitting ? "Logging..." : "Log Item"}
+                </button>
+
+                <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
+                    Auto-fill is editable
+                  </span>
+                  <span>You can edit this later</span>
+                </div>
+              </div>
+            </div>
+          </SwipePager>
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {isMobileSwipe ? MobileUI : DesktopUI}
     </form>
   );
 }
