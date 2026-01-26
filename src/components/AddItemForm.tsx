@@ -454,6 +454,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       setUploadedPhotoPath(path);
 
       setFormData((prev) => ({ ...prev, photo_url: publicUrl }));
+      setIsUploading(false);
       setIsAnalyzing(true);
 
       const { data, error } = await supabase.functions.invoke("analyze-image", {
@@ -608,14 +609,26 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const busy = isUploading || isAnalyzing;
 
   const analyzingBanner = busy ? (
-    <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
+  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+    <div className="flex items-center justify-center gap-2">
       <Sparkles className="h-5 w-5 animate-pulse" style={{ color: BRAND.accent }} />
       <span className="text-sm font-semibold text-slate-900">
         {isUploading ? "Uploading photo..." : "Analyzing image..."}
       </span>
       <span className="text-sm text-slate-500">Auto-fill is editable.</span>
     </div>
-  ) : null;
+
+    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+      <div
+        className="h-full w-1/3 rounded-full"
+        style={{
+          backgroundColor: BRAND.accent,
+          animation: "ffLoading 1.1s infinite linear",
+        }}
+      />
+    </div>
+  </div>
+) : null;
 
   const aiFieldStyle = (on: boolean) =>
     on ? { backgroundColor: BRAND.sky, borderColor: BRAND.skyBorder } : { backgroundColor: "white" };
@@ -629,11 +642,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
           <p className="mt-1 text-sm text-slate-600">
             We’ll auto-detect the item, category, and location.
           </p>
-        </div>
-
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          <Clock className="h-4 w-4" />
-          <span className="font-medium">Most items take under 10 seconds</span>
         </div>
       </div>
 
@@ -852,7 +860,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                   <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
                   Auto-fill is editable
                 </span>
-                <span>You can edit this later</span>
               </div>
             </div>
           </div>
