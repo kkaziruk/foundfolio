@@ -903,6 +903,12 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         </div>
       </div>
 
+      {busy && (
+        <div className="px-5 pt-3">
+          {analyzingBanner}
+        </div>
+      )}
+
       {loadingOptions ? (
         <div className="px-5 py-6 text-slate-600">Loading…</div>
       ) : (
