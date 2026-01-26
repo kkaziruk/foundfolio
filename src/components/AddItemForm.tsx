@@ -83,162 +83,135 @@ function useMediaQuery(query: string) {
 }
 
 /**
- * SwipePager (mobile only)
- * - Uses pointer events (more reliable on iOS/Safari than touch events)
- * - Uses pointer capture to prevent child elements (like images) from stealing the gesture
+ * SnapPager (Option A)
+ * - No horizontal scrolling. We move pages with translateX.
+ * - Pointer capture keeps the gesture from being stolen by children.
+ * - touchAction: pan-y so vertical scroll inside pages still works.
+ * - overflow-hidden ensures nothing can "spill" outside the viewport.
  */
-function SwipePager({
+function SnapPager({
   step,
   setStep,
   children,
-  canGoNext,
 }: {
   step: number;
   setStep: (n: number) => void;
   children: React.ReactNode[];
-  canGoNext?: (fromStep: number) => boolean;
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
+  const pages = children.length;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   const startX = useRef(0);
   const startY = useRef(0);
-  const dx = useRef(0);
-  const isDown = useRef(false);
-  const lockedAxis = useRef<"x" | "y" | null>(null);
+  const dragXRef = useRef(0);
+  const dragging = useRef(false);
+  const axis = useRef<"none" | "h" | "v">("none");
 
-  const [dragging, setDragging] = useState(false);
-  const pages = children.length;
+  const [dragX, setDragX] = useState(0);
 
-  const translateTo = (px: number, animate: boolean) => {
-    const el = trackRef.current;
-    if (!el) return;
-    el.style.transition = animate ? "transform 260ms cubic-bezier(0.22, 1, 0.36, 1)" : "none";
-    el.style.transform = `translateX(${px}px)`;
-  };
-
-  const snap = (nextStep: number) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const w = container.clientWidth;
-    const clamped = Math.max(0, Math.min(pages - 1, nextStep));
-    setStep(clamped);
-    translateTo(-clamped * w, true);
-  };
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const onResize = () => {
-      const w = container.clientWidth;
-      translateTo(-step * w, true);
-    };
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [step]);
+  const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0 && e.pointerType !== "touch") return;
+    // Only primary click/touch
+    if ((e as any).button != null && (e as any).button !== 0) return;
 
-    const container = containerRef.current;
-    if (!container) return;
-
-    isDown.current = true;
-    setDragging(true);
-    lockedAxis.current = null;
-
+    dragging.current = true;
+    axis.current = "none";
     startX.current = e.clientX;
     startY.current = e.clientY;
-    dx.current = 0;
+    dragXRef.current = 0;
+    setDragX(0);
 
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-
-    const w = container.clientWidth;
-    translateTo(-step * w, false);
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!isDown.current) return;
+    if (!dragging.current) return;
 
-    const container = containerRef.current;
-    if (!container) return;
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
 
-    const moveX = e.clientX - startX.current;
-    const moveY = e.clientY - startY.current;
-
-    if (!lockedAxis.current) {
-      const ax = Math.abs(moveX);
-      const ay = Math.abs(moveY);
-      if (ax < 6 && ay < 6) return;
-      lockedAxis.current = ax > ay ? "x" : "y";
+    // Decide gesture axis after small threshold
+    if (axis.current === "none") {
+      const adx = Math.abs(dx);
+      const ady = Math.abs(dy);
+      if (adx < 6 && ady < 6) return;
+      axis.current = adx > ady ? "h" : "v";
     }
 
-    if (lockedAxis.current === "y") return;
+    // If vertical scroll gesture, let the page scroll naturally
+    if (axis.current === "v") return;
 
-    dx.current = moveX;
-    const w = container.clientWidth;
+    const wrap = wrapRef.current;
+    const width = wrap?.clientWidth || 1;
 
-    let offset = moveX;
-    if ((step === 0 && offset > 0) || (step === pages - 1 && offset < 0)) offset *= 0.35;
+    // Rubber-band at edges
+    let next = dx;
+    if (step === 0 && dx > 0) next = dx * 0.25;
+    if (step === pages - 1 && dx < 0) next = dx * 0.25;
 
-    translateTo(-step * w + offset, false);
+    next = clamp(next, -width, width);
+
+    dragXRef.current = next;
+    setDragX(next);
+  };
+
+  const finishDrag = () => {
+    const wrap = wrapRef.current;
+    const width = wrap?.clientWidth || 1;
+
+    const dx = dragXRef.current;
+    const thresholdPx = Math.max(60, width * 0.18);
+
+    let nextStep = step;
+    if (dx <= -thresholdPx) nextStep = step + 1;
+    else if (dx >= thresholdPx) nextStep = step - 1;
+
+    nextStep = clamp(nextStep, 0, pages - 1);
+
+    dragging.current = false;
+    axis.current = "none";
+    dragXRef.current = 0;
+    setDragX(0);
+
+    if (nextStep !== step) setStep(nextStep);
   };
 
   const onPointerUp = () => {
-    if (!isDown.current) return;
-    isDown.current = false;
-    setDragging(false);
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    if (lockedAxis.current === "y") {
-      snap(step);
-      return;
-    }
-
-    const w = container.clientWidth;
-    const threshold = w * 0.22;
-    const moved = dx.current;
-
-    if (moved < -threshold) {
-      const ok = canGoNext ? canGoNext(step) : true;
-      if (ok) return snap(step + 1);
-    }
-
-    if (moved > threshold) return snap(step - 1);
-
-    snap(step);
+    if (!dragging.current) return;
+    finishDrag();
   };
+
+  const onPointerCancel = () => {
+    if (!dragging.current) return;
+    finishDrag();
+  };
+
+  const isDragging = dragging.current && axis.current === "h";
 
   return (
     <div
-      ref={containerRef}
+      ref={wrapRef}
       className="w-full overflow-hidden"
       style={{
         touchAction: "pan-y",
-        WebkitUserSelect: "none",
-        userSelect: "none",
+        overscrollBehavior: "contain",
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={onPointerCancel}
     >
       <div
-        ref={trackRef}
-        className="flex"
+        className={`flex w-full ${isDragging ? "" : "transition-transform duration-300 ease-out"}`}
         style={{
-          width: `${pages * 100}%`,
+          transform: `translateX(calc(${-step * 100}% + ${dragX}px))`,
           willChange: "transform",
-          cursor: dragging ? "grabbing" : "grab",
         }}
       >
         {children.map((child, i) => (
-          <div key={i} className="w-full shrink-0">
-            <div className="px-5 py-5">{child}</div>
+          <div key={i} className="w-full shrink-0 min-w-0 max-w-full">
+            <div className="px-5 py-5 min-w-0 max-w-full box-border">{child}</div>
           </div>
         ))}
       </div>
@@ -259,17 +232,17 @@ function FieldLabel({
 }) {
   return (
     <div className="mb-2 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shrink-0">
           <Icon className="h-4 w-4" />
         </span>
-        <span className="text-sm font-semibold text-slate-800">
+        <span className="text-sm font-semibold text-slate-800 truncate">
           {text} {required ? <span className="text-slate-500">*</span> : null}
         </span>
       </div>
 
       {ai ? (
-        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700">
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 shrink-0">
           <Sparkles className="h-3.5 w-3.5" />
           Auto-filled
         </span>
@@ -362,7 +335,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             c.find((x) => x.name === "Other / Unclassified") ?? c.find((x) => x.name === "Other");
           const nextCategory = prev.category || other?.name || c[0]?.name || "";
 
-          const flags = categoryFlagsFromName(nextCategory);
+          const flags = nextCategory ? categoryFlagsFromName(nextCategory) : { isSensitive: false, isHighValue: false };
 
           return {
             ...prev,
@@ -370,7 +343,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             category: nextCategory,
             is_high_value: prev.is_high_value || flags.isHighValue,
             sensitive: prev.sensitive || flags.isSensitive,
-            photo_url: prev.sensitive || flags.isSensitive ? null : prev.photo_url,
+            photo_url: (prev.sensitive || flags.isSensitive) ? null : prev.photo_url,
           };
         });
       } catch (e) {
@@ -397,12 +370,12 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     };
   }, [photoPreview]);
 
+  // Auto-advance: step 0 -> 1 once a photo exists (only on mobile)
   useEffect(() => {
     if (!isMobileSwipe) return;
     if ((formData.photo_url || photoPreview) && step === 0) setStep(1);
   }, [isMobileSwipe, formData.photo_url, photoPreview, step]);
 
-  // ✅ Updated per your instructions: side-effect outside updater
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -412,8 +385,8 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       setAiFilled((prev) => ({ ...prev, [name]: false }));
     }
 
-    // ✅ side-effect outside the state updater
-    if (name === "category" && isMobileSwipe && step === 1) {
+    // (Optional) gentle auto-advance 1 -> 2 only after user picks a category
+    if (name === "category" && isMobileSwipe && step === 1 && value.trim()) {
       setStep(2);
     }
 
@@ -541,7 +514,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     if (isSubmitting) return;
 
     if (!formData.description.trim()) return alert("Description is required.");
-    // ✅ compile fix
     if (!formData.category.trim()) return alert("Category is required.");
     if (!(lockedBuilding ? (building as string) : formData.building).trim())
       return alert("Building is required.");
@@ -648,20 +620,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const aiFieldStyle = (on: boolean) =>
     on ? { backgroundColor: BRAND.sky, borderColor: BRAND.skyBorder } : { backgroundColor: "white" };
 
-  const buildingNameForValidation = lockedBuilding ? (building as string) : formData.building;
-
-  const canGoNext = (fromStep: number) => {
-    if (fromStep === 0) return !!formData.photo_url || !!photoPreview;
-    if (fromStep === 1) {
-      return (
-        !!formData.description.trim() &&
-        !!formData.category.trim() &&
-        !!buildingNameForValidation.trim()
-      );
-    }
-    return true;
-  };
-
   // Desktop UI (full)
   const DesktopUI = (
     <>
@@ -685,16 +643,16 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         <div className="px-6 py-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* LEFT: Photo */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 min-w-0">
+              <div className="flex items-center justify-between min-w-0 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white shrink-0">
                     <ImageIcon className="h-5 w-5 text-slate-700" />
                   </span>
-                  <div className="text-sm font-extrabold text-slate-900">Photo</div>
+                  <div className="text-sm font-extrabold text-slate-900 truncate">Photo</div>
                 </div>
 
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shrink-0">
                   <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
                   Auto-detects details
                 </span>
@@ -738,16 +696,16 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                       onClick={() => cameraInputRef.current?.click()}
                       className="w-full rounded-2xl border border-slate-200 bg-white p-6 text-left hover:border-slate-300"
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
                         <span
-                          className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white"
+                          className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shrink-0"
                           style={{ backgroundColor: BRAND.ink }}
                         >
                           <Camera className="h-7 w-7" />
                         </span>
 
-                        <div className="flex-1">
-                          <div className="text-base font-extrabold text-slate-900">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-base font-extrabold text-slate-900 truncate">
                             Take / Upload Photo
                           </div>
                           <div className="mt-1 text-sm text-slate-600">
@@ -769,7 +727,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             </div>
 
             {/* RIGHT: Fields */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 min-w-0">
               <div className="mb-5">
                 <FieldLabel icon={FileText} text="Description" required ai={aiFilled.description} />
                 <input
@@ -913,13 +871,13 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const MobileUI = (
     <>
       <div className="border-b border-slate-100 px-5 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0">
             <h2 className="text-xl font-extrabold text-slate-900">Log Item</h2>
             <p className="mt-1 text-sm text-slate-600">Swipe to move through steps.</p>
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 shrink-0">
             <Clock className="h-4 w-4" />
             <span className="font-medium">~10 sec</span>
           </div>
@@ -941,18 +899,18 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       {loadingOptions ? (
         <div className="px-5 py-6 text-slate-600">Loading…</div>
       ) : (
-        <SwipePager step={step} setStep={setStep} canGoNext={canGoNext}>
+        <SnapPager step={step} setStep={setStep}>
           {/* Step 0: Photo */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 min-w-0">
+            <div className="flex items-center justify-between min-w-0 gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white shrink-0">
                   <ImageIcon className="h-5 w-5 text-slate-700" />
                 </span>
-                <div className="text-sm font-extrabold text-slate-900">Photo</div>
+                <div className="text-sm font-extrabold text-slate-900 truncate">Photo</div>
               </div>
 
-              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shrink-0">
                 <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
                 Auto-detects
               </span>
@@ -1001,16 +959,16 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                     onClick={() => cameraInputRef.current?.click()}
                     className="w-full rounded-2xl border border-slate-200 bg-white p-5 text-left active:border-slate-300"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <span
-                        className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white"
+                        className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shrink-0"
                         style={{ backgroundColor: BRAND.ink }}
                       >
                         <Camera className="h-7 w-7" />
                       </span>
 
-                      <div className="flex-1">
-                        <div className="text-base font-extrabold text-slate-900">Take / Upload</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base font-extrabold text-slate-900 truncate">Take / Upload</div>
                         <div className="mt-1 text-sm text-slate-600">
                           One tap. We’ll fill in the details.
                         </div>
@@ -1030,7 +988,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
           </div>
 
           {/* Step 1: Identify */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 min-w-0">
             <div className="mb-4 text-sm font-extrabold text-slate-900">Identify</div>
 
             <div className="mb-5">
@@ -1110,7 +1068,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
           </div>
 
           {/* Step 2: Context + Submit */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 min-w-0">
             <div className="mb-4 text-sm font-extrabold text-slate-900">Context</div>
 
             <div className="mb-5">
@@ -1167,19 +1125,16 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
               <span>You can edit this later</span>
             </div>
           </div>
-        </SwipePager>
+        </SnapPager>
       )}
     </>
   );
 
-  // ✅ Final return updated per your instructions:
-  // - file input removed from DesktopUI
-  // - one shared file input for both desktop + mobile
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       {isMobileSwipe ? MobileUI : DesktopUI}
 
-      {/* ✅ One shared file input for both desktop + mobile */}
+      {/* One shared file input for both desktop + mobile */}
       <input
         ref={cameraInputRef}
         type="file"
