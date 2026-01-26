@@ -37,12 +37,16 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
         .from("buildings")
         .select("id,name,campus_slug,created_at,is_system")
         .eq("campus_slug", campus)
-        .eq("is_system", false) // hide system buildings (e.g., NDPD)
         .order("name");
 
       if (error) throw error;
 
-      setBuildings((data ?? []) as Building[]);
+      const rows = (data ?? []) as Building[];
+
+      // Optional: keep system buildings visible but grouped last
+      const normal = rows.filter((b) => !b.is_system);
+      const system = rows.filter((b) => b.is_system);
+      setBuildings([...normal, ...system]);
     } catch (err) {
       console.error("Error fetching buildings:", err);
       setError("Failed to load buildings");
@@ -57,23 +61,19 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
     setSuccess("");
 
     const name = newBuildingName.trim();
-
     if (!name) {
       setError("Please enter a building name");
       return;
     }
 
-    // Guard against recreating system buildings
+    // Guard against recreating system buildings by name
     if (name.toLowerCase() === "ndpd") {
       setError("That building name is reserved.");
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from("buildings")
-        .insert([{ name, campus_slug: campus }]);
-
+      const { error } = await supabase.from("buildings").insert([{ name, campus_slug: campus }]);
       if (error) throw error;
 
       setSuccess("Building added successfully!");
@@ -81,18 +81,21 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
       await fetchBuildings();
       onBuildingsChange?.();
 
-      setTimeout(() => setSuccess(""), 3000);
+      setTimeout(() => setSuccess(""), 2500);
     } catch (err: any) {
       console.error("Error adding building:", err);
-      if (err?.code === "23505") {
-        setError("This building already exists");
-      } else {
-        setError("Failed to add building");
-      }
+      if (err?.code === "23505") setError("This building already exists");
+      else setError("Failed to add building");
     }
   };
 
-  const handleDeleteBuilding = async (id: string, name: string) => {
+  const handleDeleteBuilding = async (id: string, name: string, isSystem?: boolean | null) => {
+    if (isSystem) {
+      setError("System buildings cannot be deleted.");
+      setTimeout(() => setError(""), 2500);
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
 
     try {
@@ -103,7 +106,7 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
       await fetchBuildings();
       onBuildingsChange?.();
 
-      setTimeout(() => setSuccess(""), 3000);
+      setTimeout(() => setSuccess(""), 2500);
     } catch (err) {
       console.error("Error deleting building:", err);
       setError("Failed to delete building");
@@ -174,15 +177,27 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
                 >
                   <div className="flex items-center gap-3">
                     <Building2 className="w-5 h-5 text-slate-400" />
-                    <span className="font-medium text-slate-900">{building.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-900">{building.name}</span>
+                      {building.is_system ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                          System
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteBuilding(building.id, building.name)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    aria-label="Delete building"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+
+                  {building.is_system ? (
+                    <span className="text-xs text-slate-500 font-medium">Protected</span>
+                  ) : (
+                    <button
+                      onClick={() => handleDeleteBuilding(building.id, building.name, building.is_system)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      aria-label="Delete building"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

@@ -1,13 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Search as SearchIcon,
-  Building2,
-  BarChart3,
-  LogOut,
-  User,
-  Inbox,
-} from "lucide-react";
+import { Search as SearchIcon, Building2, BarChart3, LogOut, User } from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
 import ItemsList from "../components/ItemsList";
@@ -16,21 +9,15 @@ import ManageStaff from "../components/ManageStaff";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
-type AdminView = "analytics" | "buildings" | "staff" | "intake";
+type AdminView = "analytics" | "buildings" | "staff";
 
 type BuildingRow = {
   id: string;
   name: string;
+  is_system?: boolean | null;
 };
 
-const IntakeBanner = () => (
-  <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl p-4">
-    <div className="font-semibold">NDPD Intake</div>
-    <div className="text-sm text-blue-800">
-      Items added here are held at <span className="font-medium">Hammes Mowbray Hall (NDPD)</span>.
-    </div>
-  </div>
-);
+const ALL_BUILDINGS_ID = "__ALL__";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -40,13 +27,12 @@ export default function AdminPage() {
   const { user, loading, profile, profileLoading } = useAuth();
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // NOTE: keeping selection as building NAME for now (matches your existing AddItemForm/ItemsList props)
-  const [selectedBuilding, setSelectedBuilding] = useState<string>("All Buildings");
-
   const [adminView, setAdminView] = useState<AdminView>("analytics");
+
+  // ✅ selection is now stable: building id (or "__ALL__")
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>(ALL_BUILDINGS_ID);
+
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
-  const [buildingNames, setBuildingNames] = useState<string[]>(["All Buildings"]);
   const [campusName, setCampusName] = useState<string>("");
 
   const isBuildingManager = profile?.role === "building_manager";
@@ -55,37 +41,30 @@ export default function AdminPage() {
 
   // --- Guard: auth + onboarding + role + campus match ---
   useEffect(() => {
-    // Wait for session bootstrap
     if (loading) return;
 
-    // Not signed in
     if (!user) {
       navigate("/login", { replace: true });
       return;
     }
 
-    // Wait for profile to load before making decisions that depend on it
     if (profileLoading) return;
 
-    // Signed in but no profile row / missing campus
     if (!profile?.campus_slug) {
       navigate("/not-onboarded", { replace: true });
       return;
     }
 
-    // Signed in but not staff
     if (!isStaff) {
       navigate("/unauthorized", { replace: true });
       return;
     }
 
-    // Missing campus param → route to their campus admin page
     if (!campus) {
       navigate(`/admin/${profile.campus_slug}`, { replace: true });
       return;
     }
 
-    // Campus mismatch → route to their campus admin page
     if (profile.campus_slug !== campus) {
       navigate(`/admin/${profile.campus_slug}`, { replace: true });
       return;
@@ -99,7 +78,7 @@ export default function AdminPage() {
     let cancelled = false;
     setCampusName(campus.toUpperCase());
 
-    const loadCampus = async () => {
+    (async () => {
       try {
         const { data, error } = await supabase
           .from("campuses")
@@ -113,15 +92,14 @@ export default function AdminPage() {
       } catch {
         if (!cancelled) setCampusName(campus.toUpperCase());
       }
-    };
+    })();
 
-    loadCampus();
     return () => {
       cancelled = true;
     };
   }, [campus]);
 
-  // --- Fetch buildings (shared function so BuildingsManager can refresh list) ---
+  // --- Fetch buildings (shared so BuildingsManager can refresh list) ---
   const fetchBuildings = useCallback(async () => {
     if (!profile?.campus_slug || profile.campus_slug !== campus) return;
     if (!isStaff) return;
@@ -129,57 +107,39 @@ export default function AdminPage() {
     try {
       const { data, error } = await supabase
         .from("buildings")
-        .select("id,name")
+        .select("id,name,is_system")
         .eq("campus_slug", campus)
-        .eq("is_system", false) // hide system buildings (e.g., NDPD)
         .order("name");
 
       if (error) throw error;
 
       const rows = (data ?? []) as BuildingRow[];
-      const names = rows.map((b) => b.name);
-
       setBuildings(rows);
 
-      // Building managers: lock them to their building
+      // Building manager: lock selection to their building id
       if (isBuildingManager) {
-        if (profile.building_id) {
-          const one = rows.find((b) => b.id === profile.building_id);
-          const lockedName = one?.name ?? names[0] ?? "Unknown Building";
-
-          setBuildingNames([lockedName]);
-          setSelectedBuilding(lockedName);
-        } else {
-          // If their profile has no building_id, still lock them down
-          const fallback = names[0] ?? "Unknown Building";
-          setBuildingNames([fallback]);
-          setSelectedBuilding(fallback);
-        }
+        const lockedId = profile?.building_id ?? rows[0]?.id;
+        if (lockedId) setSelectedBuildingId(lockedId);
       } else {
-        // Campus admin: allow All + all buildings
-        setBuildingNames(["All Buildings", ...names]);
-
-        // keep prior selection if still valid
-        setSelectedBuilding((prev) => {
-          if (prev === "All Buildings") return "All Buildings";
-          if (names.includes(prev)) return prev;
-          return "All Buildings";
+        // Campus admin: keep selection if valid; else default to ALL
+        setSelectedBuildingId((prev) => {
+          if (prev === ALL_BUILDINGS_ID) return ALL_BUILDINGS_ID;
+          const exists = rows.some((b) => b.id === prev);
+          return exists ? prev : ALL_BUILDINGS_ID;
         });
       }
     } catch (err) {
       console.error("Error fetching buildings:", err);
-
+      // fallback
       if (isBuildingManager) {
-        setBuildingNames(["Unknown Building"]);
-        setSelectedBuilding("Unknown Building");
+        setSelectedBuildingId(profile?.building_id ?? ALL_BUILDINGS_ID);
       } else {
-        setBuildingNames(["All Buildings"]);
-        setSelectedBuilding("All Buildings");
+        setSelectedBuildingId(ALL_BUILDINGS_ID);
       }
+      setBuildings([]);
     }
   }, [campus, profile?.campus_slug, profile?.building_id, isStaff, isBuildingManager]);
 
-  // call it when page becomes valid
   useEffect(() => {
     const isReady =
       !loading &&
@@ -188,10 +148,8 @@ export default function AdminPage() {
       isStaff &&
       profile?.campus_slug === campus;
 
-    if (isReady) {
-      fetchBuildings();
-    }
-  }, [loading, profileLoading, user, profile?.campus_slug, isStaff, campus, fetchBuildings]);
+    if (isReady) fetchBuildings();
+  }, [loading, profileLoading, user, isStaff, profile?.campus_slug, campus, fetchBuildings]);
 
   const handleItemAdded = () => setRefreshTrigger((p) => p + 1);
 
@@ -200,21 +158,27 @@ export default function AdminPage() {
     navigate("/login", { replace: true });
   };
 
+  const selectedBuilding = useMemo(() => {
+    if (selectedBuildingId === ALL_BUILDINGS_ID) return null;
+    return buildings.find((b) => b.id === selectedBuildingId) ?? null;
+  }, [selectedBuildingId, buildings]);
+
+  // These components still use building NAME (your current API).
+  const selectedBuildingNameForProps = selectedBuilding ? selectedBuilding.name : "All Buildings";
+
   const showCampusAdminPanels = useMemo(() => {
-    return selectedBuilding === "All Buildings" && !isBuildingManager;
-  }, [selectedBuilding, isBuildingManager]);
+    return selectedBuildingId === ALL_BUILDINGS_ID && !isBuildingManager;
+  }, [selectedBuildingId, isBuildingManager]);
 
-  // Session bootstrap
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
-  }
+  // Safety: building manager should never land on staff tab
+  useEffect(() => {
+    if (!isCampusAdmin && adminView === "staff") setAdminView("analytics");
+  }, [isCampusAdmin, adminView]);
 
-  // Profile fetch window (don’t redirect here)
-  if (user && profileLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
-  }
+  // Loading states
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
+  if (user && profileLoading) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
 
-  // While redirects happen (but only after profile is loaded)
   if (!user || (!profileLoading && (!profile?.campus_slug || !isStaff || profile.campus_slug !== campus))) {
     return <div className="min-h-screen flex items-center justify-center">Redirecting…</div>;
   }
@@ -232,9 +196,8 @@ export default function AdminPage() {
               />
               <div>
                 <h1 className="text-xl font-bold text-slate-900">
-                  {selectedBuilding === "All Buildings" ? "Admin" : selectedBuilding}
-                  </h1>
-
+                  {selectedBuildingId === ALL_BUILDINGS_ID ? "Admin" : selectedBuilding?.name ?? "Building"}
+                </h1>
                 <p className="text-sm text-slate-600">{campusName}</p>
               </div>
             </div>
@@ -263,94 +226,84 @@ export default function AdminPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Building filter */}
+        {/* Building filter (campus admin only) */}
         {!isBuildingManager && (
-    <div className="mb-6 bg-white rounded-xl shadow-md p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-slate-600" />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-slate-700">Building</h3>
-          </div>
-        </div>
+          <div className="mb-6 bg-white rounded-xl shadow-md p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-slate-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-slate-700">Building</h3>
+                </div>
+              </div>
 
-        <select
-          value={selectedBuilding}
-          onChange={(e) => setSelectedBuilding(e.target.value)}
-          className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] font-medium text-[#374151]"
-        >
-          {buildingNames.map((b) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  )}
+              <select
+                value={selectedBuildingId}
+                onChange={(e) => setSelectedBuildingId(e.target.value)}
+                className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] font-medium text-[#374151]"
+              >
+                <option value={ALL_BUILDINGS_ID}>All Buildings</option>
+                {buildings.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-8">
           {showCampusAdminPanels ? (
             <>
               {/* Admin Tabs */}
               <div className="bg-white rounded-xl shadow-md p-6">
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-    <button
-      onClick={() => setAdminView("analytics")}
-      className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-        adminView === "analytics"
-          ? "bg-[#3B82F6] text-white"
-          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-      }`}
-    >
-      <BarChart3 className="w-5 h-5 shrink-0" />
-      <span className="truncate">Analytics</span>
-    </button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setAdminView("analytics")}
+                    className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+                      adminView === "analytics"
+                        ? "bg-[#3B82F6] text-white"
+                        : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+                    }`}
+                  >
+                    <BarChart3 className="w-5 h-5 shrink-0" />
+                    <span className="truncate">Analytics</span>
+                  </button>
 
-    <button
-      onClick={() => setAdminView("buildings")}
-      className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-        adminView === "buildings"
-          ? "bg-[#3B82F6] text-white"
-          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-      }`}
-    >
-      <Building2 className="w-5 h-5 shrink-0" />
-      <span className="truncate">Buildings</span>
-    </button>
+                  <button
+                    onClick={() => setAdminView("buildings")}
+                    className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+                      adminView === "buildings"
+                        ? "bg-[#3B82F6] text-white"
+                        : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+                    }`}
+                  >
+                    <Building2 className="w-5 h-5 shrink-0" />
+                    <span className="truncate">Buildings</span>
+                  </button>
 
-    {isCampusAdmin && (
-      <button
-        onClick={() => setAdminView("intake")}
-        className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-          adminView === "intake"
-            ? "bg-[#3B82F6] text-white"
-            : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-        }`}
-      >
-        <Inbox className="w-5 h-5 shrink-0" />
-        <span className="truncate">Add Item</span>
-      </button>
-    )}
+                  {isCampusAdmin && (
+                    <button
+                      onClick={() => setAdminView("staff")}
+                      className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+                        adminView === "staff"
+                          ? "bg-[#3B82F6] text-white"
+                          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+                      }`}
+                    >
+                      <User className="w-5 h-5 shrink-0" />
+                      <span className="truncate">Staff</span>
+                    </button>
+                  )}
+                </div>
+              </div>
 
-    {isCampusAdmin && (
-      <button
-        onClick={() => setAdminView("staff")}
-        className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
-          adminView === "staff"
-            ? "bg-[#3B82F6] text-white"
-            : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
-        }`}
-      >
-        <User className="w-5 h-5 shrink-0" />
-        <span className="truncate">Staff</span>
-      </button>
-    )}
-  </div>
-</div>
-
-              {adminView === "analytics" && <AdminDashboard campus={campus} building={selectedBuilding} />}
+              {adminView === "analytics" && (
+                <AdminDashboard campus={campus} building={selectedBuildingNameForProps} />
+              )}
 
               {adminView === "buildings" && (
                 <BuildingsManager
@@ -360,20 +313,15 @@ export default function AdminPage() {
                 />
               )}
 
-              {adminView === "intake" && isCampusAdmin && (
-                <div className="space-y-6">
-                  <IntakeBanner />
-                  <AddItemForm onSuccess={handleItemAdded} campus={campus} building="NDPD" />
-                  <ItemsList refreshTrigger={refreshTrigger} campus={campus} building="NDPD" />
-                </div>
+              {adminView === "staff" && isCampusAdmin && (
+                <ManageStaff campus={campus} buildings={buildings.map((b) => ({ id: b.id, name: b.name }))} />
               )}
-
-              {adminView === "staff" && isCampusAdmin && <ManageStaff campus={campus} buildings={buildings} />}
             </>
           ) : (
             <>
-              <AddItemForm onSuccess={handleItemAdded} campus={campus} building={selectedBuilding} />
-              <ItemsList refreshTrigger={refreshTrigger} campus={campus} building={selectedBuilding} />
+              {/* Per-building intake */}
+              <AddItemForm onSuccess={handleItemAdded} campus={campus} building={selectedBuildingNameForProps} />
+              <ItemsList refreshTrigger={refreshTrigger} campus={campus} building={selectedBuildingNameForProps} />
             </>
           )}
         </div>
