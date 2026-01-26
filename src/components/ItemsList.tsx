@@ -11,7 +11,6 @@ import {
 import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
 import { formatLoggedAt } from "../lib/dates";
-import { getStaffIntent } from "../lib/authIntent";
 
 interface ItemsListProps {
   refreshTrigger: number;
@@ -69,10 +68,31 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedCount = selectedIds.size;
 
-  const canExport = useMemo(() => {
-    const intent = getStaffIntent();
-    return intent?.mode === "campus_admin" || intent?.mode === "ndpd";
-  }, [refreshTrigger, campus, building]);
+  const [canExport, setCanExport] = useState(false);
+
+useEffect(() => {
+  (async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) return;
+
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("role, campus_slug")
+      .eq("user_id", userId)
+      .eq("campus_slug", campus)
+      .maybeSingle();
+
+    if (error) {
+      console.error("EXPORT CHECK failed:", error);
+      return;
+    }
+
+    console.log("EXPORT CHECK – profile:", profile);
+
+    setCanExport(profile?.role === "campus_admin");
+  })();
+}, [campus]);
 
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
@@ -895,7 +915,7 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h3 className="text-xl font-bold text-slate-900">Export Items to CSV</h3>
+              <h3 className="text-xl font-bold text-slate-900">Export Items as CSV</h3>
               <button
                 onClick={() => setShowExportModal(false)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"

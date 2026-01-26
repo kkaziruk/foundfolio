@@ -1,7 +1,6 @@
 export type StaffIntent =
   | { mode: "building_manager"; campus: string; building_id: string }
   | { mode: "campus_admin"; campus: string }
-  | { mode: "ndpd"; campus: string };
 
 const KEY = "ff_staff_intent";
 
