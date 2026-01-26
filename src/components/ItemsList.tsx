@@ -11,6 +11,7 @@ import {
 import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
 import { formatLoggedAt } from "../lib/dates";
+import { getStaffIntent } from "../lib/authIntent";
 
 interface ItemsListProps {
   refreshTrigger: number;
@@ -21,6 +22,9 @@ interface ItemsListProps {
 type BuildingRow = { id: string; name: string };
 
 const ITEMS_PER_PAGE = 50;
+
+const intent = getStaffIntent();
+const canExport = intent?.mode === "campus_admin" || intent?.mode === "ndpd";
 
 // Helper to display friendly names for system buildings
 function displayBuildingName(campus: string, building: string) {
@@ -277,6 +281,10 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
   // ===== Export flow =====
   const handleExport = async () => {
+    if (!canExport) {
+      alert("You do not have permission to export.");
+      return;
+    }
     setExporting(true);
     setShowExportModal(false);
 
@@ -479,18 +487,19 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
               )}
             </p>
           </div>
-
-          <button
-            onClick={() => setShowExportModal(true)}
-            disabled={exporting}
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: BRAND.ink }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
-          >
-            <Download className="w-4 h-4" />
-            <span>{exporting ? "Exporting..." : "Export CSV"}</span>
-          </button>
+          {canExport && (
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: BRAND.ink }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
+            >
+              <Download className="w-4 h-4" />
+              <span>{exporting ? "Exporting..." : "Export CSV"}</span>
+            </button>
+          )}
         </div>
 
         <div className="relative">
@@ -880,11 +889,11 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
       )}
 
       {/* Export Modal */}
-      {showExportModal && (
+      {canExport && showExportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h3 className="text-xl font-bold text-slate-900">Export Items to Excel</h3>
+              <h3 className="text-xl font-bold text-slate-900">Export Items to CSV</h3>
               <button
                 onClick={() => setShowExportModal(false)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
