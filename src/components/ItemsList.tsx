@@ -23,9 +23,6 @@ type BuildingRow = { id: string; name: string };
 
 const ITEMS_PER_PAGE = 50;
 
-const intent = getStaffIntent();
-const canExport = intent?.mode === "campus_admin" || intent?.mode === "ndpd";
-
 // Helper to display friendly names for system buildings
 function displayBuildingName(campus: string, building: string) {
   const c = (campus || "").toLowerCase();
@@ -71,6 +68,11 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   // Bulk select
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedCount = selectedIds.size;
+
+  const canExport = useMemo(() => {
+    const intent = getStaffIntent();
+    return intent?.mode === "campus_admin" || intent?.mode === "ndpd";
+  }, [refreshTrigger, campus, building]);
 
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
