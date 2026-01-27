@@ -259,10 +259,10 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-slate-600 mb-1">Picked Up</h3>
+          <h3 className="text-sm font-medium text-slate-600 mb-1">Claimed</h3>
           <p className="text-3xl font-bold text-slate-900">{pickedUp}</p>
           <p className="text-sm text-slate-500 mt-2">
-            Pickup rate (items &gt; 48h): {fmtPct01(pickupRate)}
+            Claim rate (items &gt; 48h): {fmtPct01(pickupRate)}
           </p>
         </div>
 
@@ -272,24 +272,8 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
               <Clock className="w-6 h-6 text-blue-600" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-slate-600 mb-1">Avg age of unpicked</h3>
+          <h3 className="text-sm font-medium text-slate-600 mb-1">Avg age of unclaimed items</h3>
           <p className="text-3xl font-bold text-slate-900">{fmtHours(avgHoursUnpicked)}</p>
-          <p className="text-sm text-slate-500 mt-2">Items still awaiting pickup</p>
-        </div>
-      </div>
-
-      {/* Oldest outstanding */}
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <div className="text-sm font-medium text-slate-600">Oldest unpicked item</div>
-        <div className="text-xl font-semibold text-slate-900 mt-1">
-          {fmtHours(oldestUnpickedHours)}
-          {oldestUnpickedLabel ? (
-            <span className="text-slate-600 font-medium"> · {oldestUnpickedLabel}</span>
-          ) : null}
-        </div>
-        {/* Optional: keep this honest metric around as a footnote */}
-        <div className="text-xs text-slate-500 mt-2">
-          Avg time to pickup (picked items only): {fmtHours(avgHoursToPickup)}
         </div>
       </div>
 
@@ -331,7 +315,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
             </div>
             <div>
               <div className="text-lg font-semibold text-slate-900">Trend</div>
-              <div className="text-sm text-slate-600">Logged vs picked up</div>
+              <div className="text-sm text-slate-600">Logged vs claimed</div>
             </div>
           </div>
         </div>
@@ -358,7 +342,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                       <div
                         className="h-2 bg-slate-900 rounded"
                         style={{ width: `${pickedW}%` }}
-                        title={`Picked up: ${r.picked_up_count}`}
+                        title={`Claimed: ${r.picked_up_count}`}
                       />
                     </div>
                   </div>
@@ -391,9 +375,9 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                     <th className="py-2 pr-4">Logged</th>
                     <th className="py-2 pr-4">Available</th>
                     <th className="py-2 pr-4">Picked up</th>
-                    <th className="py-2 pr-4">Pickup rate</th>
-                    <th className="py-2 pr-4">Avg time (picked)</th>
-                    <th className="py-2 pr-4">Avg age (unpicked)</th>
+                    <th className="py-2 pr-4">Claim rate</th>
+                    <th className="py-2 pr-4">Avg time (claimed)</th>
+                    <th className="py-2 pr-4">Avg age (unclaimed)</th>
                   </tr>
                 </thead>
                 <tbody>

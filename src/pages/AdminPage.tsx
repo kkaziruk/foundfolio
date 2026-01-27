@@ -1,6 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search as SearchIcon, Building2, BarChart3, LogOut, User } from "lucide-react";
+import {
+  Search as SearchIcon,
+  Building2,
+  BarChart3,
+  LogOut,
+  User,
+} from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
 import ItemsList from "../components/ItemsList";
@@ -18,6 +24,7 @@ type BuildingRow = {
 };
 
 const ALL_BUILDINGS_ID = "__ALL__";
+const HINT_KEY = "ff_admin_building_hint_dismissed";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -30,10 +37,26 @@ export default function AdminPage() {
   const [adminView, setAdminView] = useState<AdminView>("analytics");
 
   // ✅ selection is now stable: building id (or "__ALL__")
-  const [selectedBuildingId, setSelectedBuildingId] = useState<string>(ALL_BUILDINGS_ID);
+  const [selectedBuildingId, setSelectedBuildingId] =
+    useState<string>(ALL_BUILDINGS_ID);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
   const [campusName, setCampusName] = useState<string>("");
+
+  const [showBuildingHint, setShowBuildingHint] = useState(() => {
+    try {
+      return localStorage.getItem(HINT_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  });
+
+  const dismissBuildingHint = useCallback(() => {
+    setShowBuildingHint(false);
+    try {
+      localStorage.setItem(HINT_KEY, "1");
+    } catch {}
+  }, []);
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -164,7 +187,9 @@ export default function AdminPage() {
   }, [selectedBuildingId, buildings]);
 
   // These components still use building NAME (your current API).
-  const selectedBuildingNameForProps = selectedBuilding ? selectedBuilding.name : "All Buildings";
+  const selectedBuildingNameForProps = selectedBuilding
+    ? selectedBuilding.name
+    : "All Buildings";
 
   const showCampusAdminPanels = useMemo(() => {
     return selectedBuildingId === ALL_BUILDINGS_ID && !isBuildingManager;
@@ -176,11 +201,31 @@ export default function AdminPage() {
   }, [isCampusAdmin, adminView]);
 
   // Loading states
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
-  if (user && profileLoading) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading…
+      </div>
+    );
+  if (user && profileLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading…
+      </div>
+    );
 
-  if (!user || (!profileLoading && (!profile?.campus_slug || !isStaff || profile.campus_slug !== campus))) {
-    return <div className="min-h-screen flex items-center justify-center">Redirecting…</div>;
+  if (
+    !user ||
+    (!profileLoading &&
+      (!profile?.campus_slug ||
+        !isStaff ||
+        profile.campus_slug !== campus))
+  ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Redirecting…
+      </div>
+    );
   }
 
   return (
@@ -196,7 +241,9 @@ export default function AdminPage() {
               />
               <div>
                 <h1 className="text-xl font-bold text-slate-900">
-                  {selectedBuildingId === ALL_BUILDINGS_ID ? "Admin" : selectedBuilding?.name ?? "Building"}
+                  {selectedBuildingId === ALL_BUILDINGS_ID
+                    ? "Admin"
+                    : selectedBuilding?.name ?? "Building"}
                 </h1>
                 <p className="text-sm text-slate-600">{campusName}</p>
               </div>
@@ -228,14 +275,16 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Building filter (campus admin only) */}
         {!isBuildingManager && (
-          <div className="mb-6 bg-white rounded-xl shadow-md p-6">
+          <div className="mb-3 bg-white rounded-xl shadow-md p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-slate-700">Building</h3>
+                  <h3 className="text-sm font-medium text-slate-700">
+                    Building
+                  </h3>
                 </div>
               </div>
 
@@ -254,6 +303,43 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Hint: directly under dropdown (only when ALL selected) */}
+        {!isBuildingManager &&
+          selectedBuildingId === ALL_BUILDINGS_ID &&
+          showBuildingHint && (
+            <div className="mb-6 rounded-xl bg-slate-50 border border-slate-200 p-4 flex items-start gap-3">
+              <div className="w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5 text-slate-700" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-900">
+                    Inspect building inventory
+                  </div>
+
+                  <button
+                    onClick={dismissBuildingHint}
+                    className="text-slate-500 hover:text-slate-700 text-sm leading-none"
+                    aria-label="Dismiss"
+                    title="Dismiss"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="text-sm text-slate-600 mt-1">
+                  Use the{" "}
+                  <span className="font-medium text-slate-800">
+                    Building
+                  </span>{" "}
+                  dropdown above to drill into a location and export a CSV of
+                  all items.
+                </div>
+              </div>
+            </div>
+          )}
 
         <div className="space-y-8">
           {showCampusAdminPanels ? (
@@ -302,7 +388,10 @@ export default function AdminPage() {
               </div>
 
               {adminView === "analytics" && (
-                <AdminDashboard campus={campus} building={selectedBuildingNameForProps} />
+                <AdminDashboard
+                  campus={campus}
+                  building={selectedBuildingNameForProps}
+                />
               )}
 
               {adminView === "buildings" && (
@@ -314,14 +403,28 @@ export default function AdminPage() {
               )}
 
               {adminView === "staff" && isCampusAdmin && (
-                <ManageStaff campus={campus} buildings={buildings.map((b) => ({ id: b.id, name: b.name }))} />
+                <ManageStaff
+                  campus={campus}
+                  buildings={buildings.map((b) => ({
+                    id: b.id,
+                    name: b.name,
+                  }))}
+                />
               )}
             </>
           ) : (
             <>
               {/* Per-building intake */}
-              <AddItemForm onSuccess={handleItemAdded} campus={campus} building={selectedBuildingNameForProps} />
-              <ItemsList refreshTrigger={refreshTrigger} campus={campus} building={selectedBuildingNameForProps} />
+              <AddItemForm
+                onSuccess={handleItemAdded}
+                campus={campus}
+                building={selectedBuildingNameForProps}
+              />
+              <ItemsList
+                refreshTrigger={refreshTrigger}
+                campus={campus}
+                building={selectedBuildingNameForProps}
+              />
             </>
           )}
         </div>
