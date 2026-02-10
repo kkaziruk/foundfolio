@@ -1,6 +1,7 @@
 // src/components/AddItemForm.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  User,
   Camera,
   X,
   Sparkles,
@@ -112,7 +113,6 @@ function SnapPager({
   const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
   const onPointerDown = (e: React.PointerEvent) => {
-    // Only primary click/touch
     if ((e as any).button != null && (e as any).button !== 0) return;
 
     dragging.current = true;
@@ -131,7 +131,6 @@ function SnapPager({
     const dx = e.clientX - startX.current;
     const dy = e.clientY - startY.current;
 
-    // Decide gesture axis after small threshold
     if (axis.current === "none") {
       const adx = Math.abs(dx);
       const ady = Math.abs(dy);
@@ -139,13 +138,11 @@ function SnapPager({
       axis.current = adx > ady ? "h" : "v";
     }
 
-    // If vertical scroll gesture, let the page scroll naturally
     if (axis.current === "v") return;
 
     const wrap = wrapRef.current;
     const width = wrap?.clientWidth || 1;
 
-    // Rubber-band at edges
     let next = dx;
     if (step === 0 && dx > 0) next = dx * 0.25;
     if (step === pages - 1 && dx < 0) next = dx * 0.25;
@@ -193,10 +190,7 @@ function SnapPager({
     <div
       ref={wrapRef}
       className="w-full overflow-hidden"
-      style={{
-        touchAction: "pan-y",
-        overscrollBehavior: "contain",
-      }}
+      style={{ touchAction: "pan-y", overscrollBehavior: "contain" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -271,6 +265,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
+    logged_by_name: "",
     description: "",
     category: "",
     building: lockedBuilding ? (building as string) : "",
@@ -335,7 +330,9 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             c.find((x) => x.name === "Other / Unclassified") ?? c.find((x) => x.name === "Other");
           const nextCategory = prev.category || other?.name || c[0]?.name || "";
 
-          const flags = nextCategory ? categoryFlagsFromName(nextCategory) : { isSensitive: false, isHighValue: false };
+          const flags = nextCategory
+            ? categoryFlagsFromName(nextCategory)
+            : { isSensitive: false, isHighValue: false };
 
           return {
             ...prev,
@@ -343,7 +340,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             category: nextCategory,
             is_high_value: prev.is_high_value || flags.isHighValue,
             sensitive: prev.sensitive || flags.isSensitive,
-            photo_url: (prev.sensitive || flags.isSensitive) ? null : prev.photo_url,
+            photo_url: prev.sensitive || flags.isSensitive ? null : prev.photo_url,
           };
         });
       } catch (e) {
@@ -370,7 +367,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     };
   }, [photoPreview]);
 
-  // Auto-advance: step 0 -> 1 once a photo exists (only on mobile)
   useEffect(() => {
     if (!isMobileSwipe) return;
     if ((formData.photo_url || photoPreview) && step === 0) setStep(1);
@@ -385,7 +381,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       setAiFilled((prev) => ({ ...prev, [name]: false }));
     }
 
-    // (Optional) gentle auto-advance 1 -> 2 only after user picks a category
     if (name === "category" && isMobileSwipe && step === 1 && value.trim()) {
       setStep(2);
     }
@@ -397,8 +392,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         const flags = categoryFlagsFromName(value);
         next.sensitive = flags.isSensitive;
         next.is_high_value = flags.isHighValue;
-
-        // If sensitive by category, do not store photo URL
         if (next.sensitive) next.photo_url = null;
       }
 
@@ -514,6 +507,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     e.preventDefault();
     if (isSubmitting) return;
 
+    if (!formData.logged_by_name.trim()) return alert("Staff name is required.");
     if (!formData.description.trim()) return alert("Description is required.");
     if (!formData.category.trim()) return alert("Category is required.");
     if (!(lockedBuilding ? (building as string) : formData.building).trim())
@@ -554,6 +548,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       }
 
       const payload = {
+        logged_by_name: formData.logged_by_name.trim(),
         description: formData.description.trim(),
         category: formData.category.trim(),
         building: buildingName,
@@ -577,7 +572,8 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         ? categoryFlagsFromName(defaultCategory)
         : { isSensitive: false, isHighValue: false };
 
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         description: "",
         category: defaultCategory,
         building: lockedBuilding ? (building as string) : buildingName,
@@ -586,7 +582,9 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         photo_url: null,
         sensitive: defaultFlags.isSensitive,
         is_high_value: defaultFlags.isHighValue,
-      });
+        // keep logged_by_name so they don’t retype every time:
+        logged_by_name: prev.logged_by_name,
+      }));
 
       setAiFilled({ description: false, category: false, specific_location: false });
 
@@ -609,26 +607,26 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const busy = isUploading || isAnalyzing;
 
   const analyzingBanner = busy ? (
-  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
-    <div className="flex items-center justify-center gap-2">
-      <Sparkles className="h-5 w-5 animate-pulse" style={{ color: BRAND.accent }} />
-      <span className="text-sm font-semibold text-slate-900">
-        {isUploading ? "Uploading photo..." : "Analyzing image..."}
-      </span>
-      <span className="text-sm text-slate-500">Auto-fill is editable.</span>
-    </div>
+    <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <div className="flex items-center justify-center gap-2">
+        <Sparkles className="h-5 w-5 animate-pulse" style={{ color: BRAND.accent }} />
+        <span className="text-sm font-semibold text-slate-900">
+          {isUploading ? "Uploading photo..." : "Analyzing image..."}
+        </span>
+        <span className="text-sm text-slate-500">Auto-fill is editable.</span>
+      </div>
 
-    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-      <div
-        className="h-full w-1/3 rounded-full"
-        style={{
-          backgroundColor: BRAND.accent,
-          animation: "ffLoading 1.1s infinite linear",
-        }}
-      />
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+        <div
+          className="h-full w-1/3 rounded-full"
+          style={{
+            backgroundColor: BRAND.accent,
+            animation: "ffLoading 1.1s infinite linear",
+          }}
+        />
+      </div>
     </div>
-  </div>
-) : null;
+  ) : null;
 
   const aiFieldStyle = (on: boolean) =>
     on ? { backgroundColor: BRAND.sky, borderColor: BRAND.skyBorder } : { backgroundColor: "white" };
@@ -639,9 +637,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900">Review &amp; Log Item</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            We’ll auto-detect the item, category, and location.
-          </p>
+          <p className="mt-1 text-sm text-slate-600">We’ll auto-detect the item, category, and location.</p>
         </div>
       </div>
 
@@ -713,18 +709,13 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                         </span>
 
                         <div className="flex-1 min-w-0">
-                          <div className="text-base font-extrabold text-slate-900 truncate">
-                            Take / Upload Photo
-                          </div>
-                          <div className="mt-1 text-sm text-slate-600">
-                            Tap once. We’ll fill in the details.
-                          </div>
+                          <div className="text-base font-extrabold text-slate-900 truncate">Take / Upload Photo</div>
+                          <div className="mt-1 text-sm text-slate-600">Tap once. We’ll fill in the details.</div>
                         </div>
                       </div>
 
                       <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                        Tip: include the item and any labels in frame for best results. Try not to
-                        include brand names.
+                        Tip: include the item and any labels in frame for best results. Try not to include brand names.
                       </div>
                     </button>
 
@@ -736,6 +727,19 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
             {/* RIGHT: Fields */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 min-w-0">
+              <div className="mb-5">
+                <FieldLabel icon={User} text="Logged by" required />
+                <input
+                  type="text"
+                  name="logged_by_name"
+                  value={formData.logged_by_name}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="Your name"
+                  className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                />
+              </div>
+
               <div className="mb-5">
                 <FieldLabel icon={FileText} text="Description" required ai={aiFilled.description} />
                 <input
@@ -865,9 +869,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
           </div>
 
           {categories.length === 0 ? (
-            <div className="mt-4 text-xs text-amber-700">
-              No categories found for this campus. Add categories in the DB.
-            </div>
+            <div className="mt-4 text-xs text-amber-700">No categories found for this campus. Add categories in the DB.</div>
           ) : null}
         </div>
       )}
@@ -895,19 +897,13 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             <span
               key={i}
               className="h-1.5 w-10 rounded-full transition-all"
-              style={{
-                backgroundColor: i === step ? BRAND.ink : "#e5e7eb",
-              }}
+              style={{ backgroundColor: i === step ? BRAND.ink : "#e5e7eb" }}
             />
           ))}
         </div>
       </div>
 
-      {busy && (
-        <div className="px-5 pt-3">
-          {analyzingBanner}
-        </div>
-      )}
+      {busy && <div className="px-5 pt-3">{analyzingBanner}</div>}
 
       {loadingOptions ? (
         <div className="px-5 py-6 text-slate-600">Loading…</div>
@@ -938,11 +934,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                       alt="Preview"
                       className="h-72 w-full object-cover"
                       draggable={false}
-                      style={{
-                        WebkitUserDrag: "none",
-                        userSelect: "none",
-                        pointerEvents: "none",
-                      }}
+                      style={{ WebkitUserDrag: "none", userSelect: "none", pointerEvents: "none" }}
                     />
 
                     <button
@@ -982,9 +974,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
                       <div className="flex-1 min-w-0">
                         <div className="text-base font-extrabold text-slate-900 truncate">Take / Upload</div>
-                        <div className="mt-1 text-sm text-slate-600">
-                          One tap. We’ll fill in the details.
-                        </div>
+                        <div className="mt-1 text-sm text-slate-600">One tap. We’ll fill in the details.</div>
                       </div>
                     </div>
 
@@ -1085,12 +1075,20 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             <div className="mb-4 text-sm font-extrabold text-slate-900">Context</div>
 
             <div className="mb-5">
-              <FieldLabel
-                icon={MapPin}
-                text="Where exactly was it found?"
+              <FieldLabel icon={User} text="Logged by" required />
+              <input
+                type="text"
+                name="logged_by_name"
+                value={formData.logged_by_name}
+                onChange={handleInputChange}
                 required
-                ai={aiFilled.specific_location}
+                placeholder="Your name"
+                className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
               />
+            </div>
+
+            <div className="mb-5">
+              <FieldLabel icon={MapPin} text="Where exactly was it found?" required ai={aiFilled.specific_location} />
               <input
                 type="text"
                 name="specific_location"
@@ -1147,7 +1145,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       {isMobileSwipe ? MobileUI : DesktopUI}
 
-      {/* One shared file input for both desktop + mobile */}
       <input
         ref={cameraInputRef}
         type="file"
