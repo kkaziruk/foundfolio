@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  Home,
   Search as SearchIcon,
   Building2,
   BarChart3,
@@ -92,7 +93,15 @@ export default function AdminPage() {
       navigate(`/admin/${profile.campus_slug}`, { replace: true });
       return;
     }
-  }, [loading, user, profileLoading, profile?.campus_slug, isStaff, campus, navigate]);
+  }, [
+    loading,
+    user,
+    profileLoading,
+    profile?.campus_slug,
+    isStaff,
+    campus,
+    navigate,
+  ]);
 
   // --- Campus display name from DB ---
   useEffect(() => {
@@ -161,7 +170,13 @@ export default function AdminPage() {
       }
       setBuildings([]);
     }
-  }, [campus, profile?.campus_slug, profile?.building_id, isStaff, isBuildingManager]);
+  }, [
+    campus,
+    profile?.campus_slug,
+    profile?.building_id,
+    isStaff,
+    isBuildingManager,
+  ]);
 
   useEffect(() => {
     const isReady =
@@ -172,7 +187,15 @@ export default function AdminPage() {
       profile?.campus_slug === campus;
 
     if (isReady) fetchBuildings();
-  }, [loading, profileLoading, user, isStaff, profile?.campus_slug, campus, fetchBuildings]);
+  }, [
+    loading,
+    profileLoading,
+    user,
+    isStaff,
+    profile?.campus_slug,
+    campus,
+    fetchBuildings,
+  ]);
 
   const handleItemAdded = () => setRefreshTrigger((p) => p + 1);
 
@@ -180,6 +203,17 @@ export default function AdminPage() {
     await supabase.auth.signOut();
     navigate("/login", { replace: true });
   };
+
+  // ✅ Admin “Home” = reset to campus admin landing (All Buildings + Analytics)
+  const goAdminHome = useCallback(() => {
+    setSelectedBuildingId(ALL_BUILDINGS_ID);
+    setAdminView("analytics");
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, []);
 
   const selectedBuilding = useMemo(() => {
     if (selectedBuildingId === ALL_BUILDINGS_ID) return null;
@@ -217,9 +251,7 @@ export default function AdminPage() {
   if (
     !user ||
     (!profileLoading &&
-      (!profile?.campus_slug ||
-        !isStaff ||
-        profile.campus_slug !== campus))
+      (!profile?.campus_slug || !isStaff || profile.campus_slug !== campus))
   ) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -250,6 +282,17 @@ export default function AdminPage() {
             </div>
 
             <div className="flex gap-2">
+              {/* ✅ Home: returns to admin landing (All Buildings + Analytics) */}
+              <button
+                onClick={goAdminHome}
+                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
+                aria-label="Home"
+                title="Home"
+              >
+                <Home className="w-5 h-5" />
+              </button>
+
+              {/* (Optional) Back to student search */}
               <button
                 onClick={() => navigate(`/${campus}`)}
                 className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -331,9 +374,7 @@ export default function AdminPage() {
 
                 <div className="text-sm text-slate-600 mt-1">
                   Use the{" "}
-                  <span className="font-medium text-slate-800">
-                    Building
-                  </span>{" "}
+                  <span className="font-medium text-slate-800">Building</span>{" "}
                   dropdown above to drill into a location and export a CSV of
                   all items.
                 </div>
