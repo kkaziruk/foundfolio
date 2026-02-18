@@ -15,48 +15,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-type RoleTab = "admin" | "manager" | "student";
-
-const STORAGE_BASE =
-  "https://auth.foundfolio.co/storage/v1/object/public/onboarding-videos/nd";
-
-const ROLE_VIDEO: Record<RoleTab, string> = {
-  admin: `${STORAGE_BASE}/admin.mp4`,
-  manager: `${STORAGE_BASE}/building-manager.mp4`,
-  student: `${STORAGE_BASE}/student.mp4`,
-};
-
-function RoleMedia({
-  src,
-  zoom,
-  alt,
-}: {
-  src: string;
-  zoom: number;
-  alt: string;
-}) {
-  return (
-    <div className="mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm">
-      <div
-        className="transition-transform duration-300 ease-out md:group-hover:scale-[var(--z)]"
-        style={{ ["--z" as any]: zoom }}
-      >
-        <video
-          key={src}                
-          controls
-          playsInline
-          preload="metadata"
-          className="mx-auto w-full max-w-[1100px] h-auto max-h-[520px] object-contain object-center"
-          aria-label={alt}
-        >
-          <source src={src} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-      </div>
-    </div>
-  );
-}
-
 const MarketingPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -425,13 +383,14 @@ const MarketingPage = () => {
     </p>
 
     {/* Screenshot with hover zoom */}
-    <div className="mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm">
+    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
       <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.40]">
-        <RoleMedia
-  src={ROLE_VIDEO.admin}
-  zoom={1.2}
-  alt="FoundFolio admin onboarding video"
-/>
+        <img
+          src="/admin.png"
+          alt="FoundFolio admin dashboard"
+          className="mx-auto w-full max-w-[980px] h-auto max-h-[520px] object-contain object-center"
+          loading="lazy"
+        />
       </div>
     </div>
   </>
@@ -446,13 +405,14 @@ const MarketingPage = () => {
       Log items in seconds, keep your location organized, and route high-value items safely.
     </p>
 
-    <div className="mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm">
+    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
       <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.20]">
-        <RoleMedia
-  src={ROLE_VIDEO.manager}
-  zoom={1.0}
-  alt="FoundFolio building manager onboarding video"
-/>
+        <img
+          src="/manager.png"
+          alt="FoundFolio building manager dashboard"
+          className="mx-auto w-full max-w-[1100px] h-auto max-h-[520px] object-contain object-center"
+          loading="lazy"
+        />
       </div>
     </div>
   </>
@@ -467,12 +427,15 @@ const MarketingPage = () => {
       Search campus items from anywhere and avoid unnecessary trips.
     </p>
 
-    <div className="mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm">
-      <RoleMedia
-        src={ROLE_VIDEO.student}
-        zoom={1.0}
-        alt="FoundFolio student onboarding video"
-      />
+    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
+      <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.10]">
+        <img
+          src="/student.png"
+          alt="FoundFolio student search experience"
+          className="mx-auto w-full max-w-[1100px] h-auto max-h-[520px] object-contain object-center"
+          loading="lazy"
+        />
+      </div>
     </div>
   </>
 )}
