@@ -71,11 +71,13 @@ type ClaimQueueRow = {
   }>;
 };
 
-const RANGE_OPTIONS: Array<{ label: string; days: number }> = [
-  { label: "Week", days: 7 },
-  { label: "Month", days: 30 },
-  { label: "Semester", days: 120 },
-  { label: "Year", days: 365 },
+type RangeKey = "week" | "month" | "semester" | "year";
+
+const RANGE_OPTIONS: Array<{ key: RangeKey; label: string; days: number }> = [
+  { key: "week", label: "Week", days: 7 },
+  { key: "month", label: "Month", days: 30 },
+  { key: "semester", label: "Semester", days: 120 },
+  { key: "year", label: "Year", days: 365 },
 ];
 
 function fmtPct01(x: number | null | undefined) {
@@ -100,10 +102,26 @@ function median(values: number[]) {
   return sorted[middle];
 }
 
+function getRangeBounds(rangeKey: RangeKey) {
+  const now = new Date();
+  const start = new Date(now);
+
+  if (rangeKey === "week") start.setDate(now.getDate() - 7);
+  if (rangeKey === "month") start.setDate(now.getDate() - 30);
+  if (rangeKey === "semester") start.setDate(now.getDate() - 120);
+  if (rangeKey === "year") start.setDate(now.getDate() - 365);
+
+  return {
+    startDateIso: start.toISOString(),
+    endDateIso: now.toISOString(),
+    days: Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
+  };
+}
+
 export default function AdminDashboard({ campus, building }: AdminDashboardProps) {
   const isAllBuildings = building === "All Buildings";
 
-  const [rangeDays, setRangeDays] = useState<number>(30);
+  const [rangeKey, setRangeKey] = useState<RangeKey>("month");
 
   const [summaryRows, setSummaryRows] = useState<SummaryRow[]>([]);
   const [series, setSeries] = useState<TimeseriesRow[]>([]);
@@ -145,17 +163,60 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
       setError("");
 
       const buildingParam = isAllBuildings ? null : building;
-      const rangeStart = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
+      const { startDateIso, endDateIso, days } = getRangeBounds(rangeKey);
+      const rangeLabel = `${rangeKey}:${startDateIso}..${endDateIso}`;
+
+      const logQueryError = (label: string, queryError: unknown) => {
+        console.error(`[Analytics] ${label} failed`, {
+          campus,
+          building,
+          range: rangeLabel,
+          error: queryError,
+        });
+      };
+
+      // Preflight: verify user is running under staff role/campus context.
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr) {
+        logQueryError("auth.getUser", authErr);
+      }
+      const userId = authData.user?.id;
+      if (!userId) {
+        if (!cancelled) {
+          setError("Analytics requires an authenticated staff session.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      const { data: roleProfile, error: roleErr } = await supabase
+        .from("profiles")
+        .select("role,campus_slug")
+        .eq("user_id", userId)
+        .eq("campus_slug", campus)
+        .maybeSingle();
+      if (roleErr) {
+        logQueryError("profiles role preflight", roleErr);
+      }
+      const role = roleProfile?.role;
+      const isStaffRole = role === "campus_admin" || role === "building_manager";
+      if (!isStaffRole) {
+        if (!cancelled) {
+          setError("Analytics requires campus staff permissions.");
+          setLoading(false);
+        }
+        return;
+      }
 
       const summaryCall = supabase.rpc("analytics_building_summary", {
         p_campus_slug: campus,
-        p_days: rangeDays,
+        p_days: days,
       });
 
       const seriesCall = supabase.rpc("analytics_timeseries", {
         p_campus_slug: campus,
         p_building: buildingParam,
-        p_days: rangeDays,
+        p_days: days,
       });
 
       const categoryCall = isAllBuildings
@@ -166,20 +227,22 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
         : supabase.rpc("analytics_category_breakdown", {
             p_campus_slug: campus,
             p_building: building,
-            p_days: rangeDays,
+            p_days: days,
           });
 
       let searchesQuery = supabase
         .from("searches")
         .select("id", { count: "exact", head: true })
         .eq("campus_slug", campus)
-        .gte("created_at", rangeStart);
+        .gte("created_at", startDateIso)
+        .lte("created_at", endDateIso);
 
       let itemsLoggedQuery = supabase
         .from("items")
         .select("id", { count: "exact", head: true })
         .eq("campus_slug", campus)
-        .gte("created_at", rangeStart);
+        .gte("created_at", startDateIso)
+        .lte("created_at", endDateIso);
 
       let currentBacklogQuery = supabase
         .from("items")
@@ -198,13 +261,15 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
         .from("pickups")
         .select("created_at,item:items!inner(building,date_found,campus_slug)")
         .eq("item.campus_slug", campus)
-        .gte("created_at", rangeStart);
+        .gte("created_at", startDateIso)
+        .lte("created_at", endDateIso);
 
       let claimsSubmittedQuery = supabase
         .from("claim_requests")
         .select("id,item:items!inner(campus_slug,building)", { count: "exact", head: true })
         .eq("item.campus_slug", campus)
-        .gte("created_at", rangeStart);
+        .gte("created_at", startDateIso)
+        .lte("created_at", endDateIso);
 
       let claimsQueueQuery = supabase
         .from("claim_requests")
@@ -223,7 +288,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
         claimsQueueQuery = claimsQueueQuery.eq("item.building", building);
       }
 
-      const [s, t, c, p, sc, cc, il, cb, oc, cq] = await Promise.all([
+      const [s, t, c, p, sc, cc, il, cb, oc, cq] = await Promise.allSettled([
         summaryCall,
         seriesCall,
         categoryCall,
@@ -236,29 +301,69 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
         claimsQueueQuery,
       ]);
 
-      if (s.error) throw s.error;
-      if (t.error) throw t.error;
-      if (c.error) throw c.error;
-      if (p.error) throw p.error;
-      if (sc.error) throw sc.error;
-      if (cc.error) throw cc.error;
-      if (il.error) throw il.error;
-      if (cb.error) throw cb.error;
-      if (oc.error) throw oc.error;
-      if (cq.error) throw cq.error;
-
       if (cancelled) return;
 
-      setSummaryRows((s.data ?? []) as SummaryRow[]);
-      setSeries((t.data ?? []) as TimeseriesRow[]);
-      setCategoryRows((c.data ?? []) as BreakdownRow[]);
-      setPickupRows((p.data ?? []) as PickupDetailRow[]);
-      setSearchesCount(sc.count ?? 0);
-      setClaimsSubmittedCount(cc.count ?? 0);
-      setItemsLoggedCount(il.count ?? 0);
-      setCurrentBacklogCount(cb.count ?? 0);
-      setOverdueCurrentCount(oc.count ?? 0);
-      setClaimsQueue((cq.data ?? []) as ClaimQueueRow[]);
+      if (s.status === "fulfilled" && !s.value.error) setSummaryRows((s.value.data ?? []) as SummaryRow[]);
+      else {
+        logQueryError("analytics_building_summary", s.status === "fulfilled" ? s.value.error : s.reason);
+        setSummaryRows([]);
+      }
+
+      if (t.status === "fulfilled" && !t.value.error) setSeries((t.value.data ?? []) as TimeseriesRow[]);
+      else {
+        logQueryError("analytics_timeseries", t.status === "fulfilled" ? t.value.error : t.reason);
+        setSeries([]);
+      }
+
+      if (c.status === "fulfilled" && !c.value.error) setCategoryRows((c.value.data ?? []) as BreakdownRow[]);
+      else {
+        logQueryError("analytics_category_breakdown", c.status === "fulfilled" ? c.value.error : c.reason);
+        setCategoryRows([]);
+      }
+
+      if (p.status === "fulfilled" && !p.value.error) setPickupRows((p.value.data ?? []) as PickupDetailRow[]);
+      else {
+        logQueryError("pickups", p.status === "fulfilled" ? p.value.error : p.reason);
+        setPickupRows([]);
+      }
+
+      if (sc.status === "fulfilled" && !sc.value.error) setSearchesCount(sc.value.count ?? 0);
+      else {
+        logQueryError("searches_count", sc.status === "fulfilled" ? sc.value.error : sc.reason);
+        setSearchesCount(0);
+      }
+
+      if (cc.status === "fulfilled" && !cc.value.error) setClaimsSubmittedCount(cc.value.count ?? 0);
+      else {
+        logQueryError("claims_submitted_count", cc.status === "fulfilled" ? cc.value.error : cc.reason);
+        setClaimsSubmittedCount(0);
+      }
+
+      if (il.status === "fulfilled" && !il.value.error) setItemsLoggedCount(il.value.count ?? 0);
+      else {
+        logQueryError("items_logged_count", il.status === "fulfilled" ? il.value.error : il.reason);
+        setItemsLoggedCount(0);
+      }
+
+      if (cb.status === "fulfilled" && !cb.value.error) setCurrentBacklogCount(cb.value.count ?? 0);
+      else {
+        logQueryError("current_backlog_count", cb.status === "fulfilled" ? cb.value.error : cb.reason);
+        setCurrentBacklogCount(0);
+      }
+
+      if (oc.status === "fulfilled" && !oc.value.error) setOverdueCurrentCount(oc.value.count ?? 0);
+      else {
+        logQueryError("overdue_current_count", oc.status === "fulfilled" ? oc.value.error : oc.reason);
+        setOverdueCurrentCount(0);
+      }
+
+      if (cq.status === "fulfilled" && !cq.value.error) setClaimsQueue((cq.value.data ?? []) as ClaimQueueRow[]);
+      else {
+        logQueryError("claims_queue", cq.status === "fulfilled" ? cq.value.error : cq.reason);
+        setClaimsQueue([]);
+      }
+
+      setError("");
       setLoading(false);
     };
 
@@ -273,7 +378,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
     return () => {
       cancelled = true;
     };
-  }, [campus, building, rangeDays, isAllBuildings]);
+  }, [campus, building, rangeKey, isAllBuildings]);
 
   const headlineRow = isAllBuildings ? campusRow : buildingRow;
 
@@ -354,9 +459,9 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
           {RANGE_OPTIONS.map((opt) => (
             <button
               key={opt.label}
-              onClick={() => setRangeDays(opt.days)}
+              onClick={() => setRangeKey(opt.key)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                rangeDays === opt.days
+                rangeKey === opt.key
                   ? "bg-slate-900 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
