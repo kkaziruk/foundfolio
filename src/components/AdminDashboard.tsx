@@ -9,6 +9,8 @@ import {
   BarChart3,
   Tag,
   Building2,
+  Inbox,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -55,10 +57,25 @@ type PickupDetailRow = {
   }>;
 };
 
+type ClaimQueueRow = {
+  id: string;
+  status: "submitted" | "reviewing" | "ready_for_pickup" | "resolved";
+  created_at: string;
+  item: Array<{
+    id: string;
+    description: string;
+    building: string;
+    is_high_value: boolean;
+    date_found: string;
+    campus_slug: string;
+  }>;
+};
+
 const RANGE_OPTIONS: Array<{ label: string; days: number }> = [
   { label: "Week", days: 7 },
   { label: "Month", days: 30 },
   { label: "Semester", days: 120 },
+  { label: "Year", days: 365 },
 ];
 
 function fmtPct01(x: number | null | undefined) {
@@ -92,6 +109,12 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
   const [series, setSeries] = useState<TimeseriesRow[]>([]);
   const [categoryRows, setCategoryRows] = useState<BreakdownRow[]>([]);
   const [pickupRows, setPickupRows] = useState<PickupDetailRow[]>([]);
+  const [claimsQueue, setClaimsQueue] = useState<ClaimQueueRow[]>([]);
+  const [searchesCount, setSearchesCount] = useState(0);
+  const [claimsSubmittedCount, setClaimsSubmittedCount] = useState(0);
+  const [itemsLoggedCount, setItemsLoggedCount] = useState(0);
+  const [currentBacklogCount, setCurrentBacklogCount] = useState(0);
+  const [overdueCurrentCount, setOverdueCurrentCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -146,27 +169,83 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
             p_days: rangeDays,
           });
 
+      let searchesQuery = supabase
+        .from("searches")
+        .select("id", { count: "exact", head: true })
+        .eq("campus_slug", campus)
+        .gte("created_at", rangeStart);
+
+      let itemsLoggedQuery = supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .eq("campus_slug", campus)
+        .gte("created_at", rangeStart);
+
+      let currentBacklogQuery = supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .eq("campus_slug", campus)
+        .eq("status", "available");
+
+      let overdueCurrentQuery = supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .eq("campus_slug", campus)
+        .eq("status", "available")
+        .lte("date_found", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+
       let pickupsQuery = supabase
         .from("pickups")
         .select("created_at,item:items!inner(building,date_found,campus_slug)")
         .eq("item.campus_slug", campus)
         .gte("created_at", rangeStart);
 
+      let claimsSubmittedQuery = supabase
+        .from("claim_requests")
+        .select("id,item:items!inner(campus_slug,building)", { count: "exact", head: true })
+        .eq("item.campus_slug", campus)
+        .gte("created_at", rangeStart);
+
+      let claimsQueueQuery = supabase
+        .from("claim_requests")
+        .select("id,status,created_at,item:items!inner(id,description,building,is_high_value,date_found,campus_slug)")
+        .eq("item.campus_slug", campus)
+        .in("status", ["submitted", "reviewing", "ready_for_pickup"])
+        .order("created_at", { ascending: false })
+        .limit(20);
+
       if (!isAllBuildings) {
         pickupsQuery = pickupsQuery.eq("item.building", building);
+        itemsLoggedQuery = itemsLoggedQuery.eq("building", building);
+        currentBacklogQuery = currentBacklogQuery.eq("building", building);
+        overdueCurrentQuery = overdueCurrentQuery.eq("building", building);
+        claimsSubmittedQuery = claimsSubmittedQuery.eq("item.building", building);
+        claimsQueueQuery = claimsQueueQuery.eq("item.building", building);
       }
 
-      const [s, t, c, p] = await Promise.all([
+      const [s, t, c, p, sc, cc, il, cb, oc, cq] = await Promise.all([
         summaryCall,
         seriesCall,
         categoryCall,
         pickupsQuery,
+        searchesQuery,
+        claimsSubmittedQuery,
+        itemsLoggedQuery,
+        currentBacklogQuery,
+        overdueCurrentQuery,
+        claimsQueueQuery,
       ]);
 
       if (s.error) throw s.error;
       if (t.error) throw t.error;
       if (c.error) throw c.error;
       if (p.error) throw p.error;
+      if (sc.error) throw sc.error;
+      if (cc.error) throw cc.error;
+      if (il.error) throw il.error;
+      if (cb.error) throw cb.error;
+      if (oc.error) throw oc.error;
+      if (cq.error) throw cq.error;
 
       if (cancelled) return;
 
@@ -174,6 +253,12 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
       setSeries((t.data ?? []) as TimeseriesRow[]);
       setCategoryRows((c.data ?? []) as BreakdownRow[]);
       setPickupRows((p.data ?? []) as PickupDetailRow[]);
+      setSearchesCount(sc.count ?? 0);
+      setClaimsSubmittedCount(cc.count ?? 0);
+      setItemsLoggedCount(il.count ?? 0);
+      setCurrentBacklogCount(cb.count ?? 0);
+      setOverdueCurrentCount(oc.count ?? 0);
+      setClaimsQueue((cq.data ?? []) as ClaimQueueRow[]);
       setLoading(false);
     };
 
@@ -192,13 +277,8 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
 
   const headlineRow = isAllBuildings ? campusRow : buildingRow;
 
-  const totalLogged = headlineRow?.items_logged ?? 0;
-  const available = headlineRow?.items_available ?? 0;
-  const pickedUp = headlineRow?.items_picked_up ?? 0;
-
   const pickupRate = headlineRow?.pickup_rate ?? 0;
-
-  const avgHoursUnpicked = headlineRow?.avg_hours_unpicked_age ?? null;
+  const searchToClaimRate = searchesCount > 0 ? claimsSubmittedCount / searchesCount : 0;
 
   const highValueTotal = headlineRow?.high_value_count ?? 0;
   const sensitiveTotal = headlineRow?.sensitive_count ?? 0;
@@ -295,9 +375,9 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
               <Package className="w-6 h-6 text-orange-600" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-slate-600 mb-1">Available (Backlog)</h3>
-          <p className="text-3xl font-bold text-slate-900">{available}</p>
-          <p className="text-sm text-slate-500 mt-2">Logged: {totalLogged}</p>
+          <h3 className="text-sm font-medium text-slate-600 mb-1">Current backlog</h3>
+          <p className="text-3xl font-bold text-slate-900">{currentBacklogCount}</p>
+          <p className="text-sm text-slate-500 mt-2">Live state · overdue {overdueCurrentCount}</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
@@ -306,10 +386,10 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-slate-600 mb-1">Claimed</h3>
-          <p className="text-3xl font-bold text-slate-900">{pickedUp}</p>
+          <h3 className="text-sm font-medium text-slate-600 mb-1">Claims submitted</h3>
+          <p className="text-3xl font-bold text-slate-900">{claimsSubmittedCount}</p>
           <p className="text-sm text-slate-500 mt-2">
-            Claim rate (items &gt; 48h): {fmtPct01(pickupRate)}
+            Range-bound · pickup rate {fmtPct01(pickupRate)}
           </p>
         </div>
 
@@ -330,9 +410,67 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
               <Clock className="w-6 h-6 text-slate-700" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-slate-600 mb-1">Avg age of unclaimed items</h3>
-          <p className="text-3xl font-bold text-slate-900">{fmtHours(avgHoursUnpicked)}</p>
+          <h3 className="text-sm font-medium text-slate-600 mb-1">Search-to-claim rate</h3>
+          <p className="text-3xl font-bold text-slate-900">{fmtPct01(searchToClaimRate)}</p>
+          <p className="text-sm text-slate-500 mt-2">
+            Searches: {searchesCount} · Items logged: {itemsLoggedCount}
+          </p>
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+            <Inbox className="w-5 h-5 text-slate-700" />
+          </div>
+          <div>
+            <div className="text-lg font-semibold text-slate-900">Operations Queue</div>
+            <div className="text-sm text-slate-600">Needs review, high-value, and overdue work</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Needs Review</div>
+            <div className="mt-1 text-2xl font-bold text-slate-900">
+              {claimsQueue.filter((entry) => entry.status === "submitted").length}
+            </div>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <div className="text-xs uppercase tracking-wide text-amber-700">High Value (Current)</div>
+            <div className="mt-1 text-2xl font-bold text-amber-900">{highValue72}</div>
+          </div>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+            <div className="text-xs uppercase tracking-wide text-rose-700">Overdue &gt; 7d (Current)</div>
+            <div className="mt-1 text-2xl font-bold text-rose-900">{overdueCurrentCount}</div>
+          </div>
+        </div>
+
+        {claimsQueue.length === 0 ? (
+          <p className="text-sm text-slate-600">No active claims in this scope.</p>
+        ) : (
+          <div className="space-y-2">
+            {claimsQueue.slice(0, 6).map((entry) => {
+              const item = entry.item[0];
+              return (
+                <div key={entry.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 truncate">{item?.description ?? "Unknown item"}</p>
+                    <p className="text-xs text-slate-500">
+                      {item?.building ?? "Unknown building"} · {entry.status.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  {item?.is_high_value && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      High value
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Risk / special handling */}

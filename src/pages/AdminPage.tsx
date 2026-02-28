@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Home,
   Search as SearchIcon,
@@ -7,14 +7,17 @@ import {
   BarChart3,
   LogOut,
   User,
+  LifeBuoy,
 } from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
 import ItemsList from "../components/ItemsList";
 import BuildingsManager from "../components/BuildingsManager";
 import ManageStaff from "../components/ManageStaff";
+import FeedbackReportModal from "../components/FeedbackReportModal";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { setReturnTo } from "../lib/authIntent";
 
 type AdminView = "analytics" | "buildings" | "staff";
 
@@ -29,6 +32,7 @@ const HINT_KEY = "ff_admin_building_hint_dismissed";
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { campus: campusParam } = useParams();
   const campus = (campusParam ?? "").toLowerCase();
 
@@ -51,6 +55,8 @@ export default function AdminPage() {
       return true;
     }
   });
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
   const dismissBuildingHint = useCallback(() => {
     setShowBuildingHint(false);
@@ -63,11 +69,62 @@ export default function AdminPage() {
   const isCampusAdmin = profile?.role === "campus_admin";
   const isStaff = isBuildingManager || isCampusAdmin;
 
+  useEffect(() => {
+    if (!user || !profile?.campus_slug || !isStaff) return;
+    const dismissKey = `ff_staff_checklist_dismissed_${user.id}`;
+    if (localStorage.getItem(dismissKey) === "1") {
+      setShowChecklist(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadStaffChecklist = async () => {
+      let query = supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .eq("campus_slug", profile.campus_slug);
+
+      if (isBuildingManager && profile.building_id) {
+        const { data: buildingData, error: buildingErr } = await supabase
+          .from("buildings")
+          .select("name")
+          .eq("id", profile.building_id)
+          .maybeSingle();
+        if (buildingErr) console.error("Failed to load manager building name:", buildingErr);
+        const managedBuilding = buildingData?.name ?? "";
+        if (managedBuilding) {
+          query = query.eq("building", managedBuilding);
+        }
+      }
+
+      const { count, error } = await query;
+      if (error) {
+        console.error("Failed to load staff checklist state:", error);
+      }
+      if (!cancelled) setShowChecklist((count ?? 0) === 0);
+    };
+
+    loadStaffChecklist().catch((err) => {
+      console.error("Failed to evaluate staff checklist:", err);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, profile?.campus_slug, profile?.building_id, isStaff, isBuildingManager]);
+
+  const dismissChecklist = () => {
+    if (!user) return;
+    localStorage.setItem(`ff_staff_checklist_dismissed_${user.id}`, "1");
+    setShowChecklist(false);
+  };
+
   // --- Guard: auth + onboarding + role + campus match ---
   useEffect(() => {
     if (loading) return;
 
     if (!user) {
+      setReturnTo(`${location.pathname}${location.search}`);
       navigate("/login", { replace: true });
       return;
     }
@@ -100,6 +157,8 @@ export default function AdminPage() {
     profile?.campus_slug,
     isStaff,
     campus,
+    location.pathname,
+    location.search,
     navigate,
   ]);
 
@@ -285,30 +344,33 @@ export default function AdminPage() {
               {/* ✅ Home: returns to admin landing (All Buildings + Analytics) */}
               <button
                 onClick={goAdminHome}
-                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
                 aria-label="Home"
                 title="Home"
               >
                 <Home className="w-5 h-5" />
+                <span className="hidden sm:inline">Dashboard</span>
               </button>
 
               {/* (Optional) Back to student search */}
               <button
                 onClick={() => navigate(`/${campus}`)}
-                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
                 aria-label="Back to search"
                 title="Back to search"
               >
                 <SearchIcon className="w-5 h-5" />
+                <span className="hidden sm:inline">Student Search</span>
               </button>
 
               <button
                 onClick={handleSignOut}
-                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
                 aria-label="Sign out"
                 title="Sign out"
               >
                 <LogOut className="w-5 h-5" />
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
           </div>
@@ -383,6 +445,26 @@ export default function AdminPage() {
           )}
 
         <div className="space-y-8">
+          {showChecklist && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">Quick-start checklist (30 seconds)</p>
+                  <p className="text-sm text-blue-800 mt-1">
+                    1. Log your first item. 2. Move one item to confirm operations flow.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={dismissChecklist}
+                  className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           {showCampusAdminPanels ? (
             <>
               {/* Admin Tabs */}
@@ -470,6 +552,25 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setReportIssueOpen(true)}
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-[#2563EB] px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-[#1D4ED8]"
+      >
+        <LifeBuoy className="h-4 w-4" />
+        Help / Report Issue
+      </button>
+
+      <FeedbackReportModal
+        isOpen={reportIssueOpen}
+        onClose={() => setReportIssueOpen(false)}
+        context={{
+          route: `${location.pathname}${location.search}`,
+          role: profile?.role ?? "unknown",
+          itemId: null,
+        }}
+      />
     </div>
   );
 }

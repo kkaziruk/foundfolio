@@ -31,3 +31,16 @@ export function popAuthError(): string {
   sessionStorage.removeItem(ERR_KEY);
   return msg;
 }
+
+const RETURN_TO_KEY = "ff_return_to";
+
+export function setReturnTo(path: string) {
+  if (!path || !path.startsWith("/")) return;
+  sessionStorage.setItem(RETURN_TO_KEY, path);
+}
+
+export function popReturnTo(): string {
+  const value = sessionStorage.getItem(RETURN_TO_KEY) ?? "";
+  sessionStorage.removeItem(RETURN_TO_KEY);
+  return value;
+}

@@ -16,18 +16,36 @@ export function trackPageView(path: string) {
   });
 }
 
-export function trackStudentSearchSubmission(params: {
+export function trackAuthCompleted(params: { role: string; campus: string }) {
+  pushEvent('auth_completed', {
+    role: params.role,
+    campus: params.campus,
+  });
+}
+
+export function trackSearchExecuted(params: {
   campus: string;
-  hasText: boolean;
+  query: string;
   category: string;
   color: string;
   building: string;
+  results_count: number;
 }) {
-  pushEvent('student_search_submitted', {
-    campus: params.campus,
-    has_text_query: params.hasText,
-    category: params.category,
-    color: params.color,
-    building: params.building,
-  });
+  pushEvent('search_executed', params);
+}
+
+export function trackItemViewed(params: { item_id: string; campus: string }) {
+  pushEvent('item_viewed', params);
+}
+
+export function trackClaimSubmitted(params: { item_id: string; campus: string }) {
+  pushEvent('claim_submitted', params);
+}
+
+export function trackClaimResolved(params: {
+  item_id: string;
+  campus: string;
+  status: string;
+}) {
+  pushEvent('claim_resolved', params);
 }

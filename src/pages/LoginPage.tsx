@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import { popAuthError } from "../lib/authIntent";
+import { popAuthError, setReturnTo } from "../lib/authIntent";
 import { GraduationCap, Building2 } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [error, setError] = useState("");
 
@@ -22,13 +23,18 @@ export default function LoginPage() {
     }
   }, [authLoading, user, navigate]);
 
+  useEffect(() => {
+    const fromState = (location.state as { returnTo?: string } | null)?.returnTo;
+    if (fromState) setReturnTo(fromState);
+  }, [location.state]);
+
   const logInStudent = async () => {
     if (authLoading) return;
     setError("");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/app`,
         queryParams: {
           prompt: "select_account",
           hd: "nd.edu", // hint only (not enforcement)

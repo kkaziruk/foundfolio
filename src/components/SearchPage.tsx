@@ -1,7 +1,18 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Search, SlidersHorizontal, ChevronDown, MapPin, CalendarDays, Tag } from 'lucide-react';
+import {
+  Search,
+  SlidersHorizontal,
+  ChevronDown,
+  MapPin,
+  CalendarDays,
+  Tag,
+  X,
+  Sparkles,
+  Clock3,
+  BookmarkPlus,
+} from 'lucide-react';
 import { supabase, StudentSafeItem } from '../lib/supabase';
-import { trackStudentSearchSubmission } from '../lib/analytics';
+import { trackSearchExecuted } from '../lib/analytics';
 
 interface SearchPageProps {
   campus: string;
@@ -92,6 +103,24 @@ const formatFoundDate = (dateValue: string) => {
   }).format(dt);
 };
 
+function ResultCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl shadow-md overflow-hidden animate-pulse">
+      <div className="h-48 bg-slate-200" />
+      <div className="p-5 space-y-3">
+        <div className="h-5 w-4/5 rounded bg-slate-200" />
+        <div className="flex gap-2">
+          <div className="h-6 w-24 rounded-full bg-slate-200" />
+          <div className="h-6 w-16 rounded-full bg-slate-200" />
+        </div>
+        <div className="h-4 w-3/4 rounded bg-slate-200" />
+        <div className="h-4 w-2/3 rounded bg-slate-200" />
+        <div className="h-9 w-full rounded bg-slate-200" />
+      </div>
+    </div>
+  );
+}
+
 export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearchInput, setDebouncedSearchInput] = useState('');
@@ -104,9 +133,14 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   const [buildingsLoading, setBuildingsLoading] = useState(false);
 
   const [results, setResults] = useState<StudentSafeItem[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [savedFilters, setSavedFilters] = useState<
+    Array<{ name: string; category: string; color: string; building: string }>
+  >([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const campusTitle = useMemo(() => {
     if (campus === 'nd') return 'ND Lost & Found';
@@ -116,6 +150,22 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   }, [campus]);
 
   const canFilterByBuilding = buildings.length > 1;
+  const storagePrefix = `ff_search_${campus}`;
+
+  useEffect(() => {
+    try {
+      const rawRecent = localStorage.getItem(`${storagePrefix}_recent`);
+      const rawFilters = localStorage.getItem(`${storagePrefix}_saved_filters`);
+      if (rawRecent) setRecentSearches(JSON.parse(rawRecent) as string[]);
+      if (rawFilters) {
+        setSavedFilters(
+          JSON.parse(rawFilters) as Array<{ name: string; category: string; color: string; building: string }>
+        );
+      }
+    } catch (err) {
+      console.error('Failed to read search preferences:', err);
+    }
+  }, [storagePrefix]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearchInput(searchInput), 220);
@@ -171,14 +221,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
     setErrorMessage('');
 
     if (trackSubmission) {
-      trackStudentSearchSubmission({
-        campus,
-        hasText: trimmedInput.length > 0,
-        category: selectedCategory,
-        color: selectedColor,
-        building: selectedBuilding,
-      });
-
       if (trimmedInput) {
         const { error } = await supabase.from('searches').insert({
           search_term: trimmedInput,
@@ -188,6 +230,10 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
         if (error) {
           console.error('Failed to persist search log:', error);
         }
+
+        const nextRecent = [trimmedInput, ...recentSearches.filter((entry) => entry !== trimmedInput)].slice(0, 6);
+        setRecentSearches(nextRecent);
+        localStorage.setItem(`${storagePrefix}_recent`, JSON.stringify(nextRecent));
       }
     }
 
@@ -228,6 +274,16 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
       });
 
       setResults(filtered);
+      if (trackSubmission) {
+        trackSearchExecuted({
+          campus,
+          query: trimmedInput,
+          category: selectedCategory,
+          color: selectedColor,
+          building: selectedBuilding,
+          results_count: filtered.length,
+        });
+      }
     } catch (err) {
       console.error('Search failed:', err);
       setResults([]);
@@ -240,6 +296,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   const handleSearchSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
     setHasSearched(true);
+    localStorage.setItem(`${storagePrefix}_has_searched`, "1");
     await runSearch(true);
   };
 
@@ -248,7 +305,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
     runSearch(false).catch((err) => {
       console.error('Search refresh failed:', err);
     });
-    // Intentionally tied to debounced input + filters after an initial search.
   }, [hasSearched, debouncedSearchInput, selectedCategory, selectedColor, selectedBuilding]);
 
   const activeFilters = [
@@ -257,51 +313,223 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
     selectedBuilding !== 'All Buildings' ? selectedBuilding : null,
   ].filter((value): value is string => Boolean(value));
 
+  const clearFilters = () => {
+    setSelectedCategory('All Categories');
+    setSelectedColor('All Colors');
+    setSelectedBuilding('All Buildings');
+  };
+
+  const suggestionOptions = useMemo(() => {
+    const normalizedInput = normalize(searchInput);
+    if (!normalizedInput) return [];
+
+    const recentMatches = recentSearches.filter((entry) => normalize(entry).includes(normalizedInput));
+    const categoryMatches = CATEGORIES.filter(
+      (entry) => entry !== 'All Categories' && normalize(entry).includes(normalizedInput)
+    ).map((entry) => `Category: ${entry}`);
+    const buildingMatches = buildings
+      .filter((entry) => entry !== 'All Buildings' && normalize(entry).includes(normalizedInput))
+      .map((entry) => `Building: ${entry}`);
+
+    return [...recentMatches, ...categoryMatches, ...buildingMatches].slice(0, 6);
+  }, [searchInput, recentSearches, buildings]);
+
+  const applySuggestion = (value: string) => {
+    if (value.startsWith('Category: ')) {
+      setSelectedCategory(value.replace('Category: ', ''));
+      setShowFilters(true);
+      setShowSuggestions(false);
+      return;
+    }
+    if (value.startsWith('Building: ')) {
+      setSelectedBuilding(value.replace('Building: ', ''));
+      setShowFilters(true);
+      setShowSuggestions(false);
+      return;
+    }
+    setSearchInput(value);
+    setShowSuggestions(false);
+    setHasSearched(true);
+  };
+
+  const saveCurrentFilter = () => {
+    const active = {
+      name: `Set ${savedFilters.length + 1}`,
+      category: selectedCategory,
+      color: selectedColor,
+      building: selectedBuilding,
+    };
+    const next = [active, ...savedFilters].slice(0, 5);
+    setSavedFilters(next);
+    localStorage.setItem(`${storagePrefix}_saved_filters`, JSON.stringify(next));
+  };
+
+  const applySavedFilter = (index: number) => {
+    const filter = savedFilters[index];
+    if (!filter) return;
+    setSelectedCategory(filter.category);
+    setSelectedColor(filter.color);
+    setSelectedBuilding(filter.building);
+    setHasSearched(true);
+  };
+
   const showNoResults = !isSearching && hasSearched && results.length === 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 mb-3">{campusTitle}</h1>
-          <p className="text-lg text-slate-600">Search campus for your lost item</p>
+      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+        <div className="text-center mb-8 md:mb-10">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">{campusTitle}</h1>
+          <p className="text-base md:text-lg text-slate-600">Find your lost item quickly across campus.</p>
         </div>
 
-        <div className="max-w-3xl mx-auto">
-          <form onSubmit={handleSearchSubmit} className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-            <div className="flex gap-3 mb-4">
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleSearchSubmit} className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
                   type="text"
                   value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Describe your lost item"
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => window.setTimeout(() => setShowSuggestions(false), 150)}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  placeholder="Search by item name, details, or location"
                   className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent"
                 />
+                {showSuggestions && suggestionOptions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 z-20 rounded-xl border border-slate-200 bg-white shadow-lg">
+                    {suggestionOptions.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onMouseDown={() => applySuggestion(option)}
+                        className="block w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 type="submit"
                 disabled={isSearching}
-                className="px-4 py-3 bg-[#3B82F6] text-white rounded-xl hover:bg-[#2563EB] transition-colors font-medium disabled:opacity-50 flex items-center justify-center"
-                aria-label="Search"
+                className="px-5 py-3 bg-[#3B82F6] text-white rounded-xl hover:bg-[#2563EB] transition-colors font-semibold disabled:opacity-50"
               >
-                {isSearching ? <span>Searching...</span> : <Search className="w-5 h-5" />}
+                {isSearching ? 'Searching...' : 'Search'}
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowFilters((prev) => !prev)}
-              className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span className="text-sm font-medium">Advanced Filters</span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-            </button>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Filters
+                <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              </button>
+
+              {selectedCategory !== 'All Categories' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('All Categories')}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
+                >
+                  Category: {selectedCategory}
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              {selectedColor !== 'All Colors' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedColor('All Colors')}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
+                >
+                  Color: {selectedColor}
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              {selectedBuilding !== 'All Buildings' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedBuilding('All Buildings')}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
+                >
+                  Building: {selectedBuilding}
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              {activeFilters.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-sm font-medium text-[#2563EB] hover:text-[#1D4ED8]"
+                >
+                  Clear all
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={saveCurrentFilter}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <BookmarkPlus className="h-3.5 w-3.5" />
+                Save filters
+              </button>
+            </div>
+
+            {savedFilters.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Saved</span>
+                {savedFilters.map((filter, index) => (
+                  <button
+                    key={`${filter.name}-${index}`}
+                    type="button"
+                    onClick={() => applySavedFilter(index)}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    {filter.category === 'All Categories' ? 'Any category' : filter.category}
+                    {' · '}
+                    {filter.color === 'All Colors' ? 'Any color' : filter.color}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {recentSearches.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <Clock3 className="h-3.5 w-3.5" />
+                  Recent
+                </span>
+                {recentSearches.map((term) => (
+                  <button
+                    key={term}
+                    type="button"
+                    onClick={() => {
+                      setSearchInput(term);
+                      setHasSearched(true);
+                    }}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {showFilters && (
-              <div className="mt-6 pt-6 border-t border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mt-5 pt-5 border-t border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#374151] mb-2">Category</label>
                   <select
@@ -358,21 +586,25 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{errorMessage}</div>
           )}
 
-          {!isSearching && hasSearched && results.length > 0 && (
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-black">
+          {!isSearching && hasSearched && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg md:text-xl font-semibold text-black">
                 {results.length} {results.length === 1 ? 'item' : 'items'} found
               </h2>
-              {activeFilters.length > 0 && (
-                <p className="text-sm text-slate-600">Filtered by: {activeFilters.join(' · ')}</p>
-              )}
+              <p className="text-sm text-slate-600">
+                {activeFilters.length > 0
+                  ? `Active filters: ${activeFilters.join(' · ')}`
+                  : 'No filters applied'}
+              </p>
             </div>
           )}
 
           {isSearching && (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-              <p className="text-slate-600 text-lg">Searching...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ResultCardSkeleton />
+              <ResultCardSkeleton />
+              <ResultCardSkeleton />
+              <ResultCardSkeleton />
             </div>
           )}
 
@@ -393,7 +625,12 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                   )}
 
                   <div className="p-5 space-y-3">
-                    <h3 className="text-lg font-semibold text-black leading-6 line-clamp-2">{item.description}</h3>
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-lg font-semibold text-black leading-6 line-clamp-2">{item.description}</h3>
+                      <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                        Available
+                      </span>
+                    </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
@@ -435,12 +672,39 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
           )}
 
           {showNoResults && (
-            <div className="text-center py-12">
-              <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
+              <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-700 text-lg">No matching items found</p>
-              <p className="text-slate-500 text-sm mt-2">
-                Try a different category or color, then broaden your keywords if needed.
+              <p className="text-slate-500 text-sm mt-2 px-6">
+                Try removing one filter, searching with broader words, or checking a nearby building.
               </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2 px-4">
+                {buildings
+                  .filter((entry) => entry !== 'All Buildings' && entry !== selectedBuilding)
+                  .slice(0, 3)
+                  .map((entry) => (
+                    <button
+                      key={entry}
+                      type="button"
+                      onClick={() => setSelectedBuilding(entry)}
+                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                      Try {entry}
+                    </button>
+                  ))}
+                {CATEGORIES.filter((entry) => entry !== 'All Categories' && entry !== selectedCategory)
+                  .slice(0, 2)
+                  .map((entry) => (
+                    <button
+                      key={entry}
+                      type="button"
+                      onClick={() => setSelectedCategory(entry)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Category: {entry}
+                    </button>
+                  ))}
+              </div>
             </div>
           )}
         </div>

@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import { clearStaffIntent, getStaffIntent, setAuthError } from "../lib/authIntent";
+import {
+  clearStaffIntent,
+  getStaffIntent,
+  popReturnTo,
+  setAuthError,
+} from "../lib/authIntent";
+import { trackAuthCompleted } from "../lib/analytics";
 
 function getEmailDomain(email?: string | null) {
   if (!email) return null;
@@ -20,6 +26,18 @@ async function resolveCampusByDomain(domain: string) {
 
   if (error) throw error;
   return data?.slug ?? null;
+}
+
+function canNavigateToReturnPath(path: string, role: string | undefined, campusSlug: string | null) {
+  if (!path.startsWith("/")) return false;
+  if (path.startsWith("/admin/")) {
+    if (!campusSlug) return false;
+    if (role !== "campus_admin" && role !== "building_manager") return false;
+    return path === `/admin/${campusSlug}`;
+  }
+
+  if (campusSlug && path === `/${campusSlug}`) return true;
+  return false;
 }
 
 export default function PostLoginRouter() {
@@ -85,7 +103,7 @@ export default function PostLoginRouter() {
           if (invErr) {
             console.error(invErr);
           } else {
-            inviteApproved = (invites ?? []).some((inv: any) => {
+            inviteApproved = (invites ?? []).some((inv) => {
               if (wantsAdmin) return inv.role === "campus_admin";
               return inv.role === "building_manager" && inv.building_id === staffIntent.building_id;
             });
@@ -138,7 +156,16 @@ export default function PostLoginRouter() {
 
         clearStaffIntent();
         didNavigateRef.current = true;
-        navigate(`/admin/${staffIntent.campus}`, { replace: true });
+        const returnTo = popReturnTo();
+        const fallback = `/admin/${staffIntent.campus}`;
+        const destination = canNavigateToReturnPath(returnTo, wantsAdmin ? "campus_admin" : "building_manager", staffIntent.campus)
+          ? returnTo
+          : fallback;
+        trackAuthCompleted({
+          role: wantsAdmin ? "campus_admin" : "building_manager",
+          campus: staffIntent.campus,
+        });
+        navigate(destination, { replace: true });
         return;
       }
 
@@ -149,7 +176,14 @@ export default function PostLoginRouter() {
         const staffCampus = profile.campus_slug;
         if (staffCampus) {
           didNavigateRef.current = true;
-          navigate(`/admin/${staffCampus}`, { replace: true });
+          const returnTo = popReturnTo();
+          const fallback = `/admin/${staffCampus}`;
+          const destination = canNavigateToReturnPath(returnTo, profile.role, staffCampus) ? returnTo : fallback;
+          trackAuthCompleted({
+            role: profile.role,
+            campus: staffCampus,
+          });
+          navigate(destination, { replace: true });
           return;
         }
       }
@@ -203,7 +237,14 @@ export default function PostLoginRouter() {
       }
 
       didNavigateRef.current = true;
-      navigate(`/${campusSlug}`, { replace: true });
+      const returnTo = popReturnTo();
+      const fallback = `/${campusSlug}`;
+      const destination = canNavigateToReturnPath(returnTo, profile?.role, campusSlug) ? returnTo : fallback;
+      trackAuthCompleted({
+        role: "student",
+        campus: campusSlug,
+      });
+      navigate(destination, { replace: true });
     })();
   }, [loading, user, profile, profileLoading, navigate]);
 

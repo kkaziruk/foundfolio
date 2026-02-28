@@ -87,3 +87,17 @@ export interface FeedbackReportInsert {
   message: string;
   email?: string | null;
 }
+
+export type ClaimStatus = 'submitted' | 'reviewing' | 'ready_for_pickup' | 'resolved';
+
+export interface ClaimRequest {
+  id: string;
+  item_id: string;
+  requester_user_id: string | null;
+  claimant_name: string | null;
+  claimant_email: string | null;
+  claimant_note: string | null;
+  status: ClaimStatus;
+  created_at: string;
+  updated_at: string;
+}
