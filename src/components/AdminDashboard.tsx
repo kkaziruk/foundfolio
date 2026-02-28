@@ -7,8 +7,8 @@ import {
   Shield,
   Star,
   BarChart3,
-  MapPin,
   Tag,
+  Building2,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -43,15 +43,22 @@ type TimeseriesRow = {
 
 type BreakdownRow = {
   category?: string;
-  specific_location?: string;
   count: number;
 };
 
-const RANGE_OPTIONS: Array<{ label: string; days: number | null }> = [
-  { label: "7d", days: 7 },
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-  { label: "All", days: null },
+type PickupDetailRow = {
+  created_at: string;
+  item: Array<{
+    building: string;
+    date_found: string;
+    campus_slug: string;
+  }>;
+};
+
+const RANGE_OPTIONS: Array<{ label: string; days: number }> = [
+  { label: "Week", days: 7 },
+  { label: "Month", days: 30 },
+  { label: "Semester", days: 120 },
 ];
 
 function fmtPct01(x: number | null | undefined) {
@@ -66,15 +73,25 @@ function fmtHours(x: number | null | undefined) {
   return `${(x / 24).toFixed(1)}d`;
 }
 
+function median(values: number[]) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+  return sorted[middle];
+}
+
 export default function AdminDashboard({ campus, building }: AdminDashboardProps) {
   const isAllBuildings = building === "All Buildings";
 
-  const [rangeDays, setRangeDays] = useState<number | null>(30);
+  const [rangeDays, setRangeDays] = useState<number>(30);
 
   const [summaryRows, setSummaryRows] = useState<SummaryRow[]>([]);
   const [series, setSeries] = useState<TimeseriesRow[]>([]);
   const [categoryRows, setCategoryRows] = useState<BreakdownRow[]>([]);
-  const [locationRows, setLocationRows] = useState<BreakdownRow[]>([]);
+  const [pickupRows, setPickupRows] = useState<PickupDetailRow[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -105,6 +122,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
       setError("");
 
       const buildingParam = isAllBuildings ? null : building;
+      const rangeStart = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
 
       const summaryCall = supabase.rpc("analytics_building_summary", {
         p_campus_slug: campus,
@@ -118,39 +136,44 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
       });
 
       const categoryCall = isAllBuildings
-        ? Promise.resolve({ data: [], error: null } as any)
+        ? Promise.resolve({
+            data: [] as BreakdownRow[],
+            error: null as null,
+          })
         : supabase.rpc("analytics_category_breakdown", {
             p_campus_slug: campus,
             p_building: building,
             p_days: rangeDays,
           });
 
-      const locationCall = isAllBuildings
-        ? Promise.resolve({ data: [], error: null } as any)
-        : supabase.rpc("analytics_location_breakdown", {
-            p_campus_slug: campus,
-            p_building: building,
-            p_days: rangeDays,
-          });
+      let pickupsQuery = supabase
+        .from("pickups")
+        .select("created_at,item:items!inner(building,date_found,campus_slug)")
+        .eq("item.campus_slug", campus)
+        .gte("created_at", rangeStart);
 
-      const [s, t, c, l] = await Promise.all([
+      if (!isAllBuildings) {
+        pickupsQuery = pickupsQuery.eq("item.building", building);
+      }
+
+      const [s, t, c, p] = await Promise.all([
         summaryCall,
         seriesCall,
         categoryCall,
-        locationCall,
+        pickupsQuery,
       ]);
 
       if (s.error) throw s.error;
       if (t.error) throw t.error;
       if (c.error) throw c.error;
-      if (l.error) throw l.error;
+      if (p.error) throw p.error;
 
       if (cancelled) return;
 
       setSummaryRows((s.data ?? []) as SummaryRow[]);
       setSeries((t.data ?? []) as TimeseriesRow[]);
       setCategoryRows((c.data ?? []) as BreakdownRow[]);
-      setLocationRows((l.data ?? []) as BreakdownRow[]);
+      setPickupRows((p.data ?? []) as PickupDetailRow[]);
       setLoading(false);
     };
 
@@ -175,11 +198,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
 
   const pickupRate = headlineRow?.pickup_rate ?? 0;
 
-  const avgHoursToPickup = headlineRow?.avg_hours_to_pickup ?? null;
   const avgHoursUnpicked = headlineRow?.avg_hours_unpicked_age ?? null;
-
-  const oldestUnpickedHours = headlineRow?.oldest_unpicked_hours ?? null;
-  const oldestUnpickedLabel = headlineRow?.oldest_unpicked_label ?? null;
 
   const highValueTotal = headlineRow?.high_value_count ?? 0;
   const sensitiveTotal = headlineRow?.sensitive_count ?? 0;
@@ -194,6 +213,34 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
     }
     return m || 1;
   }, [series]);
+
+  const pickupDurationsHours = useMemo(() => {
+    return pickupRows
+      .map((row) => {
+        const itemRow = row.item[0];
+        if (!itemRow?.date_found) return null;
+        const foundAt = new Date(itemRow.date_found);
+        const pickedUpAt = new Date(row.created_at);
+        if (Number.isNaN(foundAt.getTime()) || Number.isNaN(pickedUpAt.getTime())) return null;
+        const hours = (pickedUpAt.getTime() - foundAt.getTime()) / (1000 * 60 * 60);
+        return hours >= 0 ? hours : null;
+      })
+      .filter((hours): hours is number => hours != null);
+  }, [pickupRows]);
+
+  const medianHoursToPickup = useMemo(() => median(pickupDurationsHours), [pickupDurationsHours]);
+
+  const pickupRateByBuildingRows = useMemo(() => {
+    return perBuildingRows
+      .filter((row) => row.items_logged > 0)
+      .map((row) => ({
+        building: row.building_name,
+        pickupRate: row.pickup_rate ?? 0,
+        logged: row.items_logged,
+      }))
+      .sort((a, b) => b.pickupRate - a.pickupRate)
+      .slice(0, 8);
+  }, [perBuildingRows]);
 
   if (loading) {
     return (
@@ -241,7 +288,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-orange-500">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -270,6 +317,17 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <Clock className="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
+          <h3 className="text-sm font-medium text-slate-600 mb-1">Median time to pickup</h3>
+          <p className="text-3xl font-bold text-slate-900">{fmtHours(medianHoursToPickup)}</p>
+          <p className="text-sm text-slate-500 mt-2">Based on claimed items in range</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-slate-500">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-6 h-6 text-slate-700" />
             </div>
           </div>
           <h3 className="text-sm font-medium text-slate-600 mb-1">Avg age of unclaimed items</h3>
@@ -361,52 +419,87 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
 
       {/* Campus table OR building breakdown */}
       {isAllBuildings ? (
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="text-lg font-semibold text-slate-900 mb-4">Buildings</div>
-
-          {perBuildingRows.length === 0 ? (
-            <div className="text-slate-600">No buildings found.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-600 border-b">
-                    <th className="py-2 pr-4">Building</th>
-                    <th className="py-2 pr-4">Logged</th>
-                    <th className="py-2 pr-4">Available</th>
-                    <th className="py-2 pr-4">Picked up</th>
-                    <th className="py-2 pr-4">Claim rate</th>
-                    <th className="py-2 pr-4">Avg time (claimed)</th>
-                    <th className="py-2 pr-4">Avg age (unclaimed)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {perBuildingRows.map((r) => (
-                    <tr key={r.building_key} className="border-b last:border-b-0">
-                      <td className="py-3 pr-4 font-medium text-slate-900">{r.building_name}</td>
-                      <td className="py-3 pr-4 text-slate-700">{r.items_logged}</td>
-                      <td className="py-3 pr-4 text-slate-700">{r.items_available}</td>
-                      <td className="py-3 pr-4 text-slate-700">{r.items_picked_up}</td>
-                      <td className="py-3 pr-4 text-slate-700">{fmtPct01(r.pickup_rate)}</td>
-                      <td className="py-3 pr-4 text-slate-700">
-                        {fmtHours(r.avg_hours_to_pickup)}
-                      </td>
-                      <td className="py-3 pr-4 text-slate-700">
-                        {fmtHours(r.avg_hours_unpicked_age)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-slate-700" />
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-900">Pickup Rate by Building</div>
+                <div className="text-sm text-slate-600">Highest-performing buildings in this range</div>
+              </div>
             </div>
-          )}
 
-          <div className="text-xs text-slate-500 mt-3">
-            Tip: switch the building dropdown above to drill into a building.
+            {pickupRateByBuildingRows.length === 0 ? (
+              <div className="text-slate-600">No pickup-rate data in this range.</div>
+            ) : (
+              <div className="space-y-3">
+                {pickupRateByBuildingRows.map((row) => (
+                  <div key={row.building}>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="font-medium text-slate-900">{row.building}</span>
+                      <span className="text-slate-700">{fmtPct01(row.pickupRate)}</span>
+                    </div>
+                    <div className="h-2 rounded bg-slate-100">
+                      <div
+                        className="h-2 rounded bg-slate-900"
+                        style={{ width: `${Math.max(2, Math.round(row.pickupRate * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="text-lg font-semibold text-slate-900 mb-4">Buildings</div>
+
+            {perBuildingRows.length === 0 ? (
+              <div className="text-slate-600">No buildings found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-600 border-b">
+                      <th className="py-2 pr-4">Building</th>
+                      <th className="py-2 pr-4">Logged</th>
+                      <th className="py-2 pr-4">Available</th>
+                      <th className="py-2 pr-4">Picked up</th>
+                      <th className="py-2 pr-4">Claim rate</th>
+                      <th className="py-2 pr-4">Avg time (claimed)</th>
+                      <th className="py-2 pr-4">Avg age (unclaimed)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {perBuildingRows.map((r) => (
+                      <tr key={r.building_key} className="border-b last:border-b-0">
+                        <td className="py-3 pr-4 font-medium text-slate-900">{r.building_name}</td>
+                        <td className="py-3 pr-4 text-slate-700">{r.items_logged}</td>
+                        <td className="py-3 pr-4 text-slate-700">{r.items_available}</td>
+                        <td className="py-3 pr-4 text-slate-700">{r.items_picked_up}</td>
+                        <td className="py-3 pr-4 text-slate-700">{fmtPct01(r.pickup_rate)}</td>
+                        <td className="py-3 pr-4 text-slate-700">
+                          {fmtHours(r.avg_hours_to_pickup)}
+                        </td>
+                        <td className="py-3 pr-4 text-slate-700">
+                          {fmtHours(r.avg_hours_unpicked_age)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="text-xs text-slate-500 mt-3">
+              Tip: switch the building dropdown above to drill into a building.
+            </div>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
@@ -429,36 +522,6 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                   >
                     <div className="text-slate-900 font-medium truncate max-w-[75%]">
                       {r.category ?? "Uncategorized"}
-                    </div>
-                    <div className="text-slate-700">{r.count}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-slate-700" />
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-slate-900">Top locations</div>
-                <div className="text-sm text-slate-600">Most frequent spots</div>
-              </div>
-            </div>
-
-            {locationRows.length === 0 ? (
-              <div className="text-slate-600">No location data.</div>
-            ) : (
-              <div className="space-y-2">
-                {locationRows.slice(0, 12).map((r, idx) => (
-                  <div
-                    key={`${r.specific_location ?? "loc"}-${idx}`}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="text-slate-900 font-medium truncate max-w-[75%]">
-                      {r.specific_location ?? "Unknown"}
                     </div>
                     <div className="text-slate-700">{r.count}</div>
                   </div>

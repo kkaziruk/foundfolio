@@ -569,7 +569,7 @@ useEffect(() => {
           {/* List */}
           <div className="divide-y divide-slate-200">
             {items.map((item) => {
-              const isSensitive = (item as any).sensitive === true;
+              const isSensitive = item.sensitive === true;
               const isChecked = selectedIds.has(item.id);
 
               return (
@@ -674,7 +674,7 @@ useEffect(() => {
 
                         <div>
                           <span className="font-medium">Logged:</span>{" "}
-                          {formatLoggedAt((item as any).logged_at)}
+                          {formatLoggedAt(item.created_at)}
                         </div>
                       </div>
 

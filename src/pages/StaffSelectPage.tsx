@@ -10,7 +10,6 @@ export default function StaffSelectPage() {
   const { campus: campusParam } = useParams();
   const campus = (campusParam ?? "").toLowerCase();
 
-  const [loading, setLoading] = useState(true);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [error, setError] = useState("");
 
@@ -22,7 +21,6 @@ export default function StaffSelectPage() {
     let cancelled = false;
 
     (async () => {
-      setLoading(true);
       setError("");
       try {
         const { data: campusRow, error: campusErr } = await supabase
@@ -35,7 +33,6 @@ export default function StaffSelectPage() {
         if (campusErr) throw campusErr;
         if (!campusRow?.slug) {
           setError("This campus is not active.");
-          setLoading(false);
           return;
         }
 
@@ -49,11 +46,9 @@ export default function StaffSelectPage() {
         if (error) throw error;
 
         if (!cancelled) setBuildings((data ?? []) as Building[]);
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error(e);
         if (!cancelled) setError("Failed to load buildings.");
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
 

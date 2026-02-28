@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import SearchPage from "../components/SearchPage";
 import ItemDetail from "../components/ItemDetail";
-import { Item, supabase } from "../lib/supabase";
+import FeedbackReportModal from "../components/FeedbackReportModal";
+import { StudentSafeItem, supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
 export default function HomePage() {
@@ -12,8 +13,9 @@ export default function HomePage() {
   const campus = (campusParam ?? "").toLowerCase();
 
   const { user, loading, profile } = useAuth();
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [selectedItem, setSelectedItem] = useState<StudentSafeItem | null>(null);
   const [campusName, setCampusName] = useState<string>("");
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   // Fetch campus name from database
   useEffect(() => {
@@ -121,6 +123,21 @@ export default function HomePage() {
 
       {!selectedItem && <SearchPage campus={campus} onViewItem={setSelectedItem} />}
       {selectedItem && <ItemDetail item={selectedItem} onBack={() => setSelectedItem(null)} />}
+
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+          <p className="text-xs text-slate-500">FoundFolio</p>
+          <button
+            type="button"
+            onClick={() => setReportIssueOpen(true)}
+            className="text-sm font-medium text-[#2563EB] hover:text-[#1D4ED8]"
+          >
+            Report Issue
+          </button>
+        </div>
+      </footer>
+
+      <FeedbackReportModal isOpen={reportIssueOpen} onClose={() => setReportIssueOpen(false)} />
     </div>
   );
 }

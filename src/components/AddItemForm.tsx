@@ -670,7 +670,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                         src={photoPreview}
                         alt="Preview"
                         className="h-72 w-full object-cover select-none"
-                        style={{ WebkitUserDrag: "none" }}
+                        style={{ userSelect: "none" }}
                         draggable={false}
                       />
 
@@ -934,7 +934,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                       alt="Preview"
                       className="h-72 w-full object-cover"
                       draggable={false}
-                      style={{ WebkitUserDrag: "none", userSelect: "none", pointerEvents: "none" }}
+                      style={{ userSelect: "none", pointerEvents: "none" }}
                     />
 
                     <button

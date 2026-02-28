@@ -11,8 +11,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface Item {
   id: string;
+  logged_by_name: string;
   description: string;
   category: string;
+  color: string | null;
   building: string;
   specific_location: string;
   date_found: string;
@@ -21,12 +23,17 @@ export interface Item {
   status: 'available' | 'picked_up';
   campus_slug: string;
 
-  // 🔐 NEW — AI / policy flag
   sensitive: boolean;
+  is_high_value: boolean;
 
   created_at: string;
   updated_at: string;
 }
+
+export type StudentSafeItem = Pick<
+  Item,
+  'id' | 'description' | 'category' | 'color' | 'building' | 'specific_location' | 'date_found' | 'photo_url' | 'status' | 'campus_slug'
+>;
 
 /* =======================
    Pickups
@@ -73,4 +80,10 @@ export interface Rating {
   stars: number;
   campus_slug: string;
   created_at: string;
+}
+
+export interface FeedbackReportInsert {
+  type: 'bug' | 'suggestion' | 'other';
+  message: string;
+  email?: string | null;
 }

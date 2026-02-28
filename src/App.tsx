@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import MarketingPage from "./pages/MarketingPage";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
@@ -9,10 +10,23 @@ import UnauthorizedPage from "./pages/UnauthorizedPage";
 import StaffSelectPage from "./pages/StaffSelectPage";
 import StaffLoginPage from "./pages/StaffLoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import { trackPageView } from "./lib/analytics";
+
+function RouteAnalytics() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const path = `${location.pathname}${location.search}`;
+    trackPageView(path);
+  }, [location.pathname, location.search]);
+
+  return null;
+}
 
 function App() {
   return (
     <BrowserRouter>
+      <RouteAnalytics />
       <Routes>
         <Route path="/" element={<MarketingPage />} />
         <Route path="/login" element={<LoginPage />} />
