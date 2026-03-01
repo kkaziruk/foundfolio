@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { BRAND } from "../lib/brand";
+import { toTitleCase } from "../lib/format";
 
 interface AddItemFormProps {
   onSuccess: () => void;
@@ -461,6 +462,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       if (!data) return;
 
       const nextDescription = (data.description ?? "").toString();
+      const nextDescription = toTitleCase(nextDescriptionRaw);
       const nextCategory = (data.category ?? "").toString();
       const nextLocation = (data.specific_location ?? data.location ?? "").toString();
 
@@ -549,7 +551,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
       const payload = {
         logged_by_name: formData.logged_by_name.trim(),
-        description: formData.description.trim(),
+        description: toTitleCase(formData.description.trim()),
         category: formData.category.trim(),
         building: buildingName,
         specific_location: formData.specific_location.trim(),
