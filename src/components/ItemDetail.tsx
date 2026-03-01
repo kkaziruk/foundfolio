@@ -1,5 +1,5 @@
-import { ArrowLeft, MapPin, Tag, FileText } from 'lucide-react';
-import { Item } from '../lib/supabase';
+import { ArrowLeft, MapPin, Tag } from "lucide-react";
+import { Item } from "../lib/supabase";
 
 interface ItemDetailProps {
   item: Item;
@@ -58,16 +58,7 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               </div>
             </div>
 
-            {item.additional_notes && (
-              <div className="mb-8 p-6 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-5 h-5 text-slate-600" />
-                  <h3 className="font-semibold text-slate-900">Additional Notes</h3>
-                </div>
-                <p className="text-slate-700 leading-relaxed">{item.additional_notes}</p>
-              </div>
-            )}
-
+            {/* Additional Notes intentionally hidden from student view (sensitive). */}
           </div>
         </div>
       </div>
