@@ -461,8 +461,9 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       }
       if (!data) return;
 
-      const nextDescription = (data.description ?? "").toString();
+      const nextDescriptionRaw = (data.description ?? "").toString();
       const nextDescription = toTitleCase(nextDescriptionRaw);
+
       const nextCategory = (data.category ?? "").toString();
       const nextLocation = (data.specific_location ?? data.location ?? "").toString();
 
