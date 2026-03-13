@@ -129,6 +129,12 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
+    if (!searchTerm.trim()) {
+      setHasSearched(true);
+      setResults([]);
+      return;
+    }
+
     setIsSearching(true);
     setHasSearched(true);
 
@@ -295,10 +301,21 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
 
         {!isSearching && hasSearched && results.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-slate-600 text-lg font-medium">No items found</p>
-            <p className="text-slate-400 text-sm mt-1">
-              Try different keywords or adjust your filters.
-            </p>
+            {searchTerm.trim() === "" ? (
+              <>
+                <p className="text-slate-600 text-lg font-medium">Enter a search term</p>
+                <p className="text-slate-400 text-sm mt-1">
+                  Describe what you lost to find it.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-slate-600 text-lg font-medium">No items found</p>
+                <p className="text-slate-400 text-sm mt-1">
+                  Try different keywords or adjust your filters.
+                </p>
+              </>
+            )}
           </div>
         )}
 
