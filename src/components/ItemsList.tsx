@@ -445,8 +445,21 @@ useEffect(() => {
         };
       });
 
-      const { error } = await supabase.from("items").upsert(updates, { onConflict: "id" });
-      if (error) throw error;
+      const results = await Promise.all(
+        updates.map((upd) =>
+          supabase
+            .from("items")
+            .update({
+              building: upd.building,
+              specific_location: upd.specific_location,
+              additional_notes: upd.additional_notes,
+            })
+            .eq("id", upd.id)
+        )
+      );
+
+      const firstError = results.find((r) => r.error)?.error;
+      if (firstError) throw firstError;
 
       setItems((prev) =>
         prev.flatMap((it) => {
