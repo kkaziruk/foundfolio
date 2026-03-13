@@ -211,6 +211,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
           <form
             onSubmit={handleSearch}
             className="bg-white rounded-2xl shadow-lg p-6 mb-6"
+            autoComplete="off"
           >
             <div className="flex gap-3 mb-4">
               <div className="flex-1 relative">
@@ -286,6 +287,56 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
             )}
           </form>
         </div>
+
+        {/* Results */}
+        {isSearching && (
+          <div className="text-center py-12 text-slate-500">Searching…</div>
+        )}
+
+        {!isSearching && hasSearched && results.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-slate-600 text-lg font-medium">No items found</p>
+            <p className="text-slate-400 text-sm mt-1">
+              Try different keywords or adjust your filters.
+            </p>
+          </div>
+        )}
+
+        {!isSearching && results.length > 0 && (
+          <div className="max-w-5xl mx-auto">
+            <p className="text-sm text-slate-500 mb-4">
+              {results.length} result{results.length !== 1 ? "s" : ""} found
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {results.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => onViewItem(item as Item)}
+                  className="text-left bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all overflow-hidden"
+                >
+                  {item.photo_url ? (
+                    <img
+                      src={item.photo_url}
+                      alt={item.description}
+                      className="w-full h-40 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-40 bg-slate-100 flex items-center justify-center">
+                      <Search className="w-10 h-10 text-slate-300" />
+                    </div>
+                  )}
+                  <div className="p-4">
+                    <p className="font-medium text-slate-900 truncate">
+                      {item.description}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-1">{item.category}</p>
+                    <p className="text-sm text-slate-400">{item.building}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
