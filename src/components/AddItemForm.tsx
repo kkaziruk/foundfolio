@@ -850,14 +850,8 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
               <button
                 type="submit"
                 disabled={isSubmitting || busy}
-                className="w-full rounded-2xl px-6 py-4 text-base font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ backgroundColor: BRAND.ink }}
-                onMouseOver={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.inkHover;
-                }}
-                onMouseOut={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.ink;
-                }}
+                className="ff-btn-primary w-full py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderRadius: "1rem" }}
               >
                 {isSubmitting ? "Logging..." : "Log Item"}
               </button>
@@ -1126,14 +1120,8 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             <button
               type="submit"
               disabled={isSubmitting || busy}
-              className="w-full rounded-2xl px-6 py-4 text-base font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ backgroundColor: BRAND.ink }}
-              onMouseOver={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.inkHover;
-              }}
-              onMouseOut={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND.ink;
-              }}
+              className="ff-btn-primary w-full py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ borderRadius: "1rem" }}
             >
               {isSubmitting ? "Logging..." : "Log Item"}
             </button>

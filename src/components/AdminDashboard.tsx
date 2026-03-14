@@ -98,7 +98,6 @@ function StatCard({
   sub,
   icon,
   color,
-  borderColor,
   bgColor,
 }: {
   label: string;
@@ -106,18 +105,17 @@ function StatCard({
   sub?: string;
   icon: React.ReactNode;
   color: string;
-  borderColor: string;
   bgColor: string;
 }) {
   return (
-    <div className={`bg-white rounded-xl shadow-sm p-6 border-l-4 ${borderColor}`}>
+    <div className="bg-white rounded-xl border border-slate-200 p-5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
       <div className="flex items-center justify-between mb-3">
-        <div className={`w-11 h-11 ${bgColor} rounded-lg flex items-center justify-center`}>
+        <div className={`w-10 h-10 ${bgColor} rounded-lg flex items-center justify-center`}>
           <div className={color}>{icon}</div>
         </div>
       </div>
-      <p className="text-sm font-medium text-slate-500 mb-1">{label}</p>
-      <p className="text-3xl font-bold text-slate-900">{value}</p>
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-2xl font-bold text-slate-900">{value}</p>
       {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
     </div>
   );
@@ -295,7 +293,6 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
           value={totalLogged}
           icon={<Package className="w-5 h-5" />}
           color="text-blue-600"
-          borderColor="border-blue-500"
           bgColor="bg-blue-50"
         />
         <StatCard
@@ -304,7 +301,6 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
           sub={`Claim rate: ${fmtPct01(pickupRate)}`}
           icon={<CheckCircle className="w-5 h-5" />}
           color="text-green-600"
-          borderColor="border-green-500"
           bgColor="bg-green-50"
         />
         <StatCard
@@ -312,17 +308,15 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
           value={available}
           sub={`Avg age: ${fmtHours(avgHoursUnpicked)}`}
           icon={<Clock className="w-5 h-5" />}
-          color="text-orange-600"
-          borderColor="border-orange-500"
-          bgColor="bg-orange-50"
+          color="text-amber-600"
+          bgColor="bg-amber-50"
         />
         <StatCard
           label="Avg Time to Claim"
           value={fmtHours(avgHoursToPickup)}
           icon={<TrendingUp className="w-5 h-5" />}
-          color="text-purple-600"
-          borderColor="border-purple-500"
-          bgColor="bg-purple-50"
+          color="text-slate-600"
+          bgColor="bg-slate-100"
         />
       </div>
 
@@ -371,7 +365,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                     dataKey="value"
                   >
                     <Cell fill="#10B981" />
-                    <Cell fill="#F59E0B" />
+                    <Cell fill="#3B82F6" />
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
@@ -382,7 +376,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                   Claimed ({pickedUp})
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
                   Available ({available})
                 </div>
               </div>

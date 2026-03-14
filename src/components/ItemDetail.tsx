@@ -1,4 +1,4 @@
-import { ArrowLeft, MapPin, Tag, Calendar, CheckCircle, ArrowRight } from "lucide-react";
+import { ArrowLeft, MapPin, Tag, Calendar, CheckCircle, ArrowRight, Circle } from "lucide-react";
 import { Item } from "../lib/supabase";
 
 interface ItemDetailProps {
@@ -27,6 +27,7 @@ function daysAgo(dateStr: string | null | undefined): string {
 export default function ItemDetail({ item, onBack }: ItemDetailProps) {
   const dateLabel = daysAgo(item.date_found as string | null | undefined);
   const dateFormatted = formatDate(item.date_found as string | null | undefined);
+  const isClaimed = item.status === "claimed" || item.status === "picked_up";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -51,7 +52,7 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
         >
           {/* Image */}
           {item.photo_url ? (
-            <div className="w-full aspect-[4/3] sm:aspect-[16/7] overflow-hidden bg-slate-100">
+            <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100">
               <img
                 src={item.photo_url}
                 alt={item.description}
@@ -59,20 +60,33 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               />
             </div>
           ) : (
-            <div className="w-full aspect-[4/3] sm:aspect-[16/7] bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col items-center justify-center gap-2">
-              <Tag className="w-12 h-12 text-slate-300" />
+            <div className="w-full aspect-[4/3] bg-slate-100 flex flex-col items-center justify-center gap-2">
+              <div className="w-16 h-16 rounded-2xl bg-slate-200 flex items-center justify-center">
+                <Tag className="w-8 h-8 text-slate-400" />
+              </div>
               <span className="text-xs text-slate-400 font-medium">No photo</span>
             </div>
           )}
 
           {/* Content */}
           <div className="p-5 sm:p-7">
-            {/* Date label */}
-            {dateLabel && (
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">
-                {dateLabel}
-              </p>
-            )}
+            {/* Status badge + date */}
+            <div className="flex items-center gap-2 mb-3">
+              {isClaimed ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                  <CheckCircle className="w-3 h-3" />
+                  Claimed
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  <Circle className="w-3 h-3" />
+                  Available
+                </span>
+              )}
+              {dateLabel && (
+                <span className="text-xs font-medium text-slate-400">{dateLabel}</span>
+              )}
+            </div>
 
             {/* Title */}
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug mb-5">
@@ -92,19 +106,19 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-4 h-4 text-emerald-500" />
+                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4 h-4 text-slate-500" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-slate-500 font-medium mb-0.5">Location</p>
+                  <p className="text-xs text-slate-500 font-medium mb-0.5">Building</p>
                   <p className="text-sm font-semibold text-slate-800">{item.building}</p>
                 </div>
               </div>
 
               {dateFormatted && (
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-4 h-4 text-amber-500" />
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-4 h-4 text-slate-500" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-slate-500 font-medium mb-0.5">Date found</p>
@@ -114,37 +128,52 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               )}
             </div>
 
-            {/* Claim CTA — actionable callout */}
-            <div className="mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <ArrowRight className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-blue-900 mb-1">
-                    Think this is yours?
-                  </p>
-                  <p className="text-sm text-blue-800 mb-3">
-                    Visit the lost &amp; found desk at{" "}
-                    <span className="font-semibold">{item.building}</span> to claim it.
-                  </p>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                      <span className="text-xs text-blue-700">Bring your student ID or NetID</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                      <span className="text-xs text-blue-700">Be ready to describe the item in detail</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                      <span className="text-xs text-blue-700">Items are held at the building's front desk</span>
+            {/* Where to go — claim CTA */}
+            {!isClaimed && (
+              <div className="mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <ArrowRight className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-blue-900 mb-0.5">
+                      Where to go
+                    </p>
+                    <p className="text-sm font-semibold text-blue-800 mb-1">
+                      {item.building} — Lost &amp; Found desk
+                    </p>
+                    <div className="space-y-1.5 mt-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="text-xs text-blue-700">Bring your student ID or NetID</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="text-xs text-blue-700">Be ready to describe the item in detail</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="text-xs text-blue-700">Items are held at the building's front desk</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {isClaimed && (
+              <div className="mt-6 rounded-xl bg-green-50 border border-green-100 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-green-900">This item has been claimed</p>
+                    <p className="text-xs text-green-700 mt-0.5">The owner has already picked it up.</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

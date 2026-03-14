@@ -1,6 +1,6 @@
 // src/pages/SearchPage.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { Search, SlidersHorizontal, X, MapPin, Package, ChevronDown } from "lucide-react";
+import { Search, SlidersHorizontal, X, MapPin, ImageIcon, ChevronDown } from "lucide-react";
 import { supabase, Item } from "../lib/supabase";
 
 interface SearchPageProps {
@@ -56,8 +56,6 @@ const CATEGORY_GROUPS: { label: string; items: string[] }[] = [
   },
 ];
 
-const ALL_CATEGORIES_FLAT = ["All Categories", ...CATEGORY_GROUPS.flatMap((g) => g.items)];
-
 function relativeDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -82,6 +80,8 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   const [results, setResults] = useState<Item[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
+  const [recentItems, setRecentItems] = useState<Item[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +121,25 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
     };
 
     loadBuildings();
+    return () => { cancelled = true; };
+  }, [campus]);
+
+  // Load recently added items for idle state
+  useEffect(() => {
+    let cancelled = false;
+    const loadRecent = async () => {
+      try {
+        const { data } = await supabase
+          .from("items")
+          .select("id, photo_url, description, category, building, date_found, status")
+          .eq("campus_slug", campus)
+          .eq("status", "available")
+          .order("created_at", { ascending: false })
+          .limit(6);
+        if (!cancelled) setRecentItems((data ?? []) as Item[]);
+      } catch { /* ignore */ }
+    };
+    loadRecent();
     return () => { cancelled = true; };
   }, [campus]);
 
@@ -189,7 +208,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   };
 
   return (
-    <div className="min-h-[calc(100vh-56px)]">
+    <div className="min-h-[calc(100vh-56px)] flex flex-col">
       {/* ── Hero search section ── */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-2xl mx-auto px-4 pt-8 pb-6">
@@ -239,7 +258,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
               </button>
             </div>
 
-            {/* Filter toggle */}
+            {/* Scope indicator + filter toggle */}
             <div className="flex items-center justify-between mt-3">
               <button
                 type="button"
@@ -258,16 +277,24 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                 />
               </button>
 
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-700 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                  Clear filters
-                </button>
-              )}
+              <div className="flex items-center gap-1 text-xs text-slate-400">
+                <MapPin className="w-3 h-3" />
+                <span>
+                  {selectedBuilding === "All Buildings"
+                    ? "Searching all buildings"
+                    : `Searching: ${selectedBuilding}`}
+                </span>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="ml-1.5 flex items-center gap-0.5 hover:text-slate-700 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Filter panel */}
@@ -296,15 +323,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
-                  {selectedCategory !== "All Categories" && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory("All Categories")}
-                      className="mt-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
-                    >
-                      × Clear
-                    </button>
-                  )}
                 </div>
 
                 {/* Building */}
@@ -326,15 +344,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   </div>
-                  {selectedBuilding !== "All Buildings" && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedBuilding("All Buildings")}
-                      className="mt-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
-                    >
-                      × Clear
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -343,7 +352,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
       </div>
 
       {/* ── Results / idle area ── */}
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-6">
 
         {/* Loading */}
         {isSearching && (
@@ -369,7 +378,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
             ) : (
               <>
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                  <Package className="w-6 h-6 text-slate-400" />
+                  <Search className="w-6 h-6 text-slate-400" />
                 </div>
                 <p className="text-base font-semibold text-slate-700">No items found</p>
                 <p className="text-sm text-slate-400 mt-1 max-w-sm">
@@ -403,7 +412,8 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                     className="text-left bg-white rounded-xl border border-slate-200 overflow-hidden group transition-all duration-150 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" }}
                   >
-                    <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100">
+                    {/* Photo — 60% of card height via aspect ratio */}
+                    <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100 relative">
                       {item.photo_url ? (
                         <img
                           src={item.photo_url}
@@ -412,28 +422,31 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                          <Package className="w-7 h-7 text-slate-300" />
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 gap-1.5">
+                          <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
+                            <ImageIcon className="w-5 h-5 text-slate-400" />
+                          </div>
                         </div>
+                      )}
+                      {/* Category badge overlay */}
+                      {item.category && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 text-slate-700 border border-slate-200/80 backdrop-blur-sm leading-tight">
+                          {item.category}
+                        </span>
                       )}
                     </div>
 
-                    <div className="p-3">
-                      <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 mb-2">
+                    <div className="p-2.5">
+                      <p className="text-[13px] font-semibold text-slate-900 leading-snug line-clamp-2 mb-1.5">
                         {item.description}
                       </p>
-                      <div className="space-y-1">
-                        <span className="ff-chip ff-chip-blue text-[11px]">
-                          {item.category}
-                        </span>
-                        <div className="flex items-center gap-1 mt-1">
-                          <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                          <span className="text-[11px] text-slate-500 truncate">{item.building}</span>
-                        </div>
-                        {dateStr && (
-                          <p className="text-[11px] text-slate-400">{dateStr}</p>
-                        )}
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                        <span className="text-[11px] text-slate-500 truncate">{item.building}</span>
                       </div>
+                      {dateStr && (
+                        <p className="text-[11px] text-slate-400">{dateStr}</p>
+                      )}
                     </div>
                   </button>
                 );
@@ -445,6 +458,62 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
         {/* ── Pre-search idle state ── */}
         {!isSearching && !hasSearched && (
           <div>
+            {/* Recently logged items */}
+            {recentItems.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                  Recently logged
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {recentItems.map((item) => {
+                    const dateStr = relativeDate(item.date_found as string | null | undefined);
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onViewItem(item as Item)}
+                        className="text-left bg-white rounded-xl border border-slate-200 overflow-hidden group transition-all duration-150 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" }}
+                      >
+                        <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100 relative">
+                          {item.photo_url ? (
+                            <img
+                              src={item.photo_url}
+                              alt={item.description}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                              <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
+                                <ImageIcon className="w-5 h-5 text-slate-400" />
+                              </div>
+                            </div>
+                          )}
+                          {item.category && (
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 text-slate-700 border border-slate-200/80 leading-tight">
+                              {item.category}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-2.5">
+                          <p className="text-[13px] font-semibold text-slate-900 leading-snug line-clamp-2 mb-1">
+                            {item.description}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                            <span className="text-[11px] text-slate-500 truncate">{item.building}</span>
+                          </div>
+                          {dateStr && (
+                            <p className="text-[11px] text-slate-400 mt-0.5">{dateStr}</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Quick-launch chips */}
             <div className="mb-8">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -466,7 +535,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
               </div>
             </div>
 
-            {/* Tip */}
+            {/* Search tip */}
             <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-start gap-3">
               <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <Search className="w-3.5 h-3.5 text-slate-500" />
@@ -487,6 +556,17 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-slate-100 bg-white py-4 px-4 mt-auto">
+        <div className="max-w-5xl mx-auto flex items-center justify-center gap-3 text-xs text-slate-400">
+          <span>Powered by FoundFolio</span>
+          <span>·</span>
+          <a href="/about" className="hover:text-slate-600 transition-colors">About</a>
+          <span>·</span>
+          <a href="/about#universities" className="hover:text-slate-600 transition-colors">For universities</a>
+        </div>
       </div>
     </div>
   );

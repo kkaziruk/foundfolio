@@ -1,0 +1,296 @@
+You are improving the FoundFolio UI/UX based on a detailed design audit.
+Do not redesign the application or rebuild architecture.
+Implement targeted improvements within the existing React + Tailwind codebase.
+
+The goal is to make the product feel like a cohesive, production-ready SaaS system while keeping the current structure intact.
+
+Do not break routing, authentication, or Supabase integration.
+
+1. Establish a strict design system
+
+Create a consistent design system used across all pages.
+
+Brand color rules
+
+Define the following CSS variables in index.css or the global stylesheet.
+
+--color-brand: #2563EB
+--color-attention: #F59E0B
+--color-success: #16A34A
+--color-danger: #DC2626
+
+--color-text-primary: #111827
+--color-text-secondary: #4B5563
+--color-text-tertiary: #9CA3AF
+
+--color-surface: #FFFFFF
+--color-surface-muted: #F9FAFB
+--color-border: #E5E7EB
+
+Then enforce these meanings everywhere:
+
+Blue → primary actions and navigation
+Amber/yellow → attention states (aging items, high-value alerts)
+Green → claimed/resolved states
+Red → destructive actions only
+
+Remove decorative color usage in analytics and stat cards.
+
+2. Standardize all buttons
+
+Replace one-off styles with reusable classes.
+
+Create shared classes:
+
+ff-btn-primary
+ff-btn-secondary
+ff-btn-destructive
+
+Rules:
+
+Primary button
+blue background + white text
+
+Secondary button
+white background + blue border + blue text
+
+Destructive button
+white background + red border + red text
+
+Replace the black “Log Item” button with the primary blue style.
+
+Ensure every primary action across the app uses the same blue.
+
+3. Fix the biggest UX issue: entry routing
+
+Students should never land on the marketing page first.
+
+Update routing logic:
+
+/ → redirect to /search
+
+if authenticated staff → redirect to /staff/inventory
+
+if authenticated admin → redirect to /admin/analytics
+
+Move the marketing page to:
+
+/about
+
+Add a small footer link on the search page:
+
+Powered by FoundFolio · About · For universities
+4. Improve student search empty state
+
+The search page currently has a large empty area.
+
+Add two sections below the search bar:
+
+Recently added
+
+Show 4–6 recently logged items.
+
+Each card:
+
+photo
+item name
+building
+time found
+
+Use compact cards.
+
+Search scope indicator
+
+Add text below the search bar:
+
+Searching all buildings
+
+Include a building selector.
+
+5. Make result cards photo-first
+
+Students identify items visually.
+
+Update result cards:
+
+Photo should occupy 60% of card height.
+
+Order of information:
+
+photo
+item name (15px semibold)
+location
+time found
+
+Category should be a small overlay badge on the image, not a large row element.
+
+6. Improve item detail page
+
+Ensure item detail view contains:
+
+Large image (4:3)
+
+Item name as title
+
+Status badge:
+
+Available → blue
+Claimed → green
+
+Add a clear Where to go section:
+
+Claim location
+Duncan Student Center
+Front Desk
+Hours: 9am–10pm
+Bring your student ID
+
+Make this section visually prominent.
+
+7. Fix dangerous staff actions
+
+Remove Mark as Claimed button from inventory rows.
+
+Instead:
+
+Add overflow menu on each row:
+
+View details
+Transfer item
+Mark as Claimed
+Delete
+
+On the item detail page:
+
+Add Mark as Claimed button.
+
+When clicked:
+
+Show confirmation modal.
+
+8. Improve staff inventory usability
+
+Add a view toggle:
+
+List view | Grid view
+
+List view:
+larger thumbnails (88px)
+
+Grid view:
+photo-focused cards similar to student results.
+
+9. Fix placeholder images
+
+Replace current 3D box placeholder with:
+
+simple gray square
+image icon
+
+Also add hover prompt for staff:
+
+Add photo
+10. Normalize AI item names
+
+AI-generated names currently have inconsistent casing.
+
+Add a transformation when saving items:
+
+Convert to sentence case.
+
+Example:
+
+Round glasses with black frame
+
+Apply to existing items via migration if possible.
+
+11. Improve photo upload flow
+
+Redesign the log item form.
+
+Photo upload should be full-width at top.
+
+Then fields below.
+
+Add drag-and-drop zone:
+
+Drag photo here
+or
+Take photo / Upload
+
+After AI autofill runs:
+
+Add small label:
+
+Auto-filled
+
+next to fields populated by AI.
+
+12. Fix admin dashboard color logic
+
+Apply consistent chart colors.
+
+Logged items → blue
+Available items → blue
+Claimed items → green
+Attention states → amber
+
+Remove multi-color KPI card borders.
+
+Use neutral cards.
+
+13. Add a simple settings menu
+
+Add a small settings icon in the nav bar.
+
+Menu options:
+
+Theme: Light / Dark
+Account
+Sign out
+
+Dark mode can reuse Tailwind dark classes.
+
+14. Improve marketing page credibility
+
+Replace generic hero illustration with:
+
+Screenshot of the actual search interface.
+
+Feature icons should use the same outline icon set used in the app.
+
+Add final CTA section:
+
+Ready to modernize your campus lost and found?
+
+Start using FoundFolio
+Request a demo
+Implementation approach
+
+Work in this order:
+
+Establish design tokens and button system
+
+Fix routing
+
+Improve search page
+
+Improve item cards
+
+Fix staff inventory actions
+
+Improve log item form
+
+Fix admin dashboard colors
+
+Improve marketing page
+
+Do not introduce unnecessary dependencies.
+
+After implementing, summarize:
+
+files changed
+
+components updated
+
+UX improvements achieved

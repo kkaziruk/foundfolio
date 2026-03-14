@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Trash2,
   Package,
@@ -7,6 +7,8 @@ import {
   Download,
   Search,
   MoveRight,
+  MoreHorizontal,
+  ImageIcon,
 } from "lucide-react";
 import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
@@ -70,6 +72,10 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
 
   const [canExport, setCanExport] = useState(false);
 
+  // Overflow menu for each row
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
 useEffect(() => {
   (async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -132,6 +138,18 @@ useEffect(() => {
   }, [selectedItems, moveTargetItem]);
 
   const isBulkMove = selectedItems.length > 0;
+
+  // Close overflow menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openMenuId]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
@@ -613,7 +631,11 @@ useEffect(() => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Package className="w-8 h-8 text-slate-300" />
+                        <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                          <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
+                            <ImageIcon className="w-5 h-5 text-slate-400" />
+                          </div>
+                        </div>
                       )}
                     </div>
 
@@ -656,22 +678,44 @@ useEffect(() => {
                           </div>
                         </div>
 
-                        <div className="flex gap-2 flex-shrink-0">
+                        {/* Overflow menu */}
+                        <div className="relative flex-shrink-0" ref={openMenuId === item.id ? menuRef : undefined}>
                           <button
-                            onClick={() => openMoveModal(item)}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                            title={selectedCount > 0 && selectedIds.has(item.id) ? "Move selected" : "Move item"}
+                            onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                            title="More actions"
                           >
-                            <MoveRight className="w-5 h-5" />
+                            <MoreHorizontal className="w-4 h-4" />
                           </button>
 
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                            title="Delete item"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          {openMenuId === item.id && (
+                            <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-48" style={{ boxShadow: "0 4px 16px 0 rgb(0 0 0 / 0.10)" }}>
+                              <button
+                                onClick={() => { setOpenMenuId(null); openMoveModal(item); }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                              >
+                                <MoveRight className="w-4 h-4 text-slate-400" />
+                                Transfer item
+                              </button>
+                              {item.status === "available" && (
+                                <button
+                                  onClick={() => { setOpenMenuId(null); openClaimModal(item); }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                >
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                  Mark as Claimed
+                                </button>
+                              )}
+                              <div className="my-1 border-t border-slate-100" />
+                              <button
+                                onClick={() => { setOpenMenuId(null); handleDelete(item.id); }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -691,18 +735,6 @@ useEffect(() => {
                         </div>
                       </div>
 
-                      {item.status === "available" && (
-                        <button
-                          onClick={() => openClaimModal(item)}
-                          className="mt-4 inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50"
-                          style={{ backgroundColor: BRAND.ink }}
-                          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
-                          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
-                        >
-                          Mark as Claimed
-                        </button>
-                      )}
-
                       {item.additional_notes && (
                         <p className="mt-3 text-sm text-slate-600 whitespace-pre-line italic">
                           “{item.additional_notes}”
@@ -720,10 +752,7 @@ useEffect(() => {
               <button
                 onClick={() => loadItems(false)}
                 disabled={loadingMore}
-                className="rounded-xl px-6 py-3 text-sm font-extrabold text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: BRAND.ink }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
+                className="ff-btn-primary px-6 py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingMore ? "Loading..." : `Load More (${items.length} loaded)`}
               </button>
@@ -759,10 +788,7 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={handleBulkDelete}
-                className="rounded-xl px-4 py-2 text-sm font-extrabold text-white"
-                style={{ backgroundColor: BRAND.ink }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND.inkHover)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND.ink)}
+                className="ff-btn-destructive px-4 py-2 text-sm"
               >
                 Delete
               </button>

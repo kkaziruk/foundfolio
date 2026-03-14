@@ -14,7 +14,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<MarketingPage />} />
+        {/* Root → login; authenticated users are routed by PostLoginRouter */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/about" element={<MarketingPage />} />
+
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
@@ -33,7 +36,7 @@ function App() {
         <Route path="/not-onboarded" element={<NotOnboardedPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
