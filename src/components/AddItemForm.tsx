@@ -965,29 +965,36 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="w-full rounded-2xl border border-slate-200 bg-white p-5 text-left active:border-slate-300"
+                    className="w-full rounded-2xl bg-white p-5 text-left transition-colors active:bg-slate-50"
+                    style={{ border: "1.5px dashed #CBD5E1" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#94A3B8"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#CBD5E1"; }}
                   >
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex flex-col items-center text-center gap-3 py-3">
                       <span
-                        className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shrink-0"
+                        className="inline-flex h-16 w-16 items-center justify-center rounded-2xl text-white"
                         style={{ backgroundColor: BRAND.ink }}
                       >
-                        <Camera className="h-7 w-7" />
+                        <Camera className="h-8 w-8" />
                       </span>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="text-base font-extrabold text-slate-900 truncate">Take / Upload</div>
-                        <div className="mt-1 text-sm text-slate-600">One tap. We’ll fill in the details.</div>
+                      <div>
+                        <div className="text-base font-extrabold text-slate-900">Take a photo or upload</div>
+                        <div className="mt-1 text-sm text-slate-500">AI fills in the details automatically</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
+                        <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
+                        <span className="text-xs font-semibold text-slate-600">Auto-detects item details</span>
                       </div>
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                      Keep labels in frame. Avoid brand names.
+                    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 text-center">
+                      Tip: keep labels in frame · avoid brand names
                     </div>
                   </button>
 
                   {analyzingBanner}
-                  <div className="text-xs text-slate-500">Swipe left after adding a photo.</div>
+                  <div className="text-xs text-slate-500 text-center">Swipe left after adding a photo.</div>
                 </div>
               )}
             </div>

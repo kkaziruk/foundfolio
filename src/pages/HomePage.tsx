@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { LogOut, LayoutDashboard } from "lucide-react";
 import SearchPage from "../components/SearchPage";
 import ItemDetail from "../components/ItemDetail";
 import { Item, supabase } from "../lib/supabase";
@@ -14,6 +14,9 @@ export default function HomePage() {
   const { user, loading, profile } = useAuth();
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [campusName, setCampusName] = useState<string>("");
+
+  const isStaff =
+    profile?.role === "building_manager" || profile?.role === "campus_admin";
 
   useEffect(() => {
     if (!campus) return;
@@ -82,6 +85,7 @@ export default function HomePage() {
       {/* Nav */}
       <nav className="sticky top-0 z-30 bg-white border-b border-slate-200" style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.04)" }}>
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+          {/* Left: logo + name */}
           <div className="flex items-center gap-2.5">
             <img
               src="/found_folio_(6).png"
@@ -96,15 +100,51 @@ export default function HomePage() {
             </div>
           </div>
 
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sign out</span>
-          </button>
+          {/* Right: staff context + sign out */}
+          <div className="flex items-center gap-1">
+            {/* Staff: show back-to-dashboard link */}
+            {isStaff && (
+              <button
+                onClick={() => navigate(`/admin/${campus}`)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium"
+                title="Back to admin dashboard"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
         </div>
+
+        {/* Staff context bar */}
+        {isStaff && (
+          <div className="border-t border-slate-100 bg-blue-50/60">
+            <div className="max-w-5xl mx-auto px-4 py-1.5 flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide">
+                Staff view
+              </span>
+              <span className="text-[11px] text-blue-500">·</span>
+              <span className="text-[11px] text-blue-500">
+                Viewing as {profile?.role === "campus_admin" ? "campus admin" : "building manager"}
+              </span>
+              <button
+                onClick={() => navigate(`/admin/${campus}`)}
+                className="ml-auto text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                ← Back to dashboard
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {!selectedItem && <SearchPage campus={campus} onViewItem={setSelectedItem} />}

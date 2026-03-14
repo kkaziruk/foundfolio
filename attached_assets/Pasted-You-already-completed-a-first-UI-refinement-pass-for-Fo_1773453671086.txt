@@ -1,0 +1,209 @@
+You already completed a first UI refinement pass for FoundFolio. Keep all the good visual improvements you made. Do not undo the current design system work.
+
+Now do a second-pass UX and product polish pass focused on the parts that still make the app feel incomplete or slightly prototype-like.
+
+Critical rule
+
+Do not rewrite the app or rework core logic.
+Do not break routing, Supabase integration, or current workflows.
+This pass is about navigation, context, usability, and product completeness in the UI.
+
+What is already good and should be preserved
+
+Keep the current improvements you already made, including:
+
+the shared design system and tokens
+
+the improved search hero
+
+the improved item cards
+
+the refined item detail layout
+
+the cleaner nav bars
+
+the improved login/staff login styling
+
+the improved admin dashboard visual polish
+
+Do not regress any of that.
+
+What still needs work
+
+The app still has several UX issues that make it feel unfinished:
+
+1. Navigation context is broken
+
+Right now, when a user enters the search page from admin, there is no clear way to return to the admin panel. This is a major usability issue.
+
+Fix this by improving navigation context across the app.
+
+Requirements:
+
+preserve the user’s context when navigating between admin/building views and search
+
+if search is opened from admin/staff context, provide an obvious way back
+
+use clear top-bar navigation or contextual back links where appropriate
+
+avoid trapping users on pages without an obvious return path
+
+make the system feel like one coherent product, not separate screens stitched together
+
+2. Search page still feels too empty before results
+
+The empty search state is cleaner than before, but it still feels too blank and dead.
+
+Improve the student search page so the pre-search state feels more alive and useful.
+
+Good options include:
+
+suggested searches
+
+popular categories
+
+recently found items preview
+
+visually helpful quick-start content
+
+Do this in a lightweight, polished way. Do not clutter the page.
+
+3. Search filters need refinement
+
+The filters work, but the category experience still feels heavy and slightly admin-like.
+
+Improve filter UX:
+
+make filters feel cleaner and more intentional
+
+ensure long category lists are usable
+
+improve spacing, alignment, and affordance
+
+consider better organization or a more polished dropdown/select treatment
+
+keep the UI simple and student-friendly
+
+4. Admin ↔ building ↔ inventory flow needs stronger cohesion
+
+The internal operational views look much better now, but moving between:
+
+admin dashboard
+
+building view
+
+inventory
+
+search
+
+still needs to feel more connected and obvious.
+
+Improve this by:
+
+making navigation between these views clearer
+
+improving page-level context cues
+
+making it obvious where the user is within the system
+
+reducing the sense that each page is isolated
+
+5. Log item page still has dead space
+
+The log item screen is improved, but the left/photo area still feels visually empty unless populated.
+
+Improve the upload/photo section:
+
+make the area feel more purposeful before an image is uploaded
+
+support a stronger preview state if one already exists
+
+improve balance between left and right columns
+
+keep the flow clean and operational
+
+6. Student item detail page needs stronger claim guidance
+
+The item detail view is clean, but the bottom instruction is still slightly too passive.
+
+Improve the clarity of the final instruction area so it feels more actionable and trustworthy:
+
+where to go
+
+what to bring
+
+what the next step is
+
+Do this without turning it into a heavy feature flow.
+
+7. Product polish and consistency pass
+
+Do a final consistency audit across:
+
+icons
+
+button hierarchy
+
+spacing
+
+hover states
+
+empty states
+
+page titles
+
+contextual helper text
+
+interaction affordances
+
+desktop vs mobile behavior
+
+The app should feel cohesive and intentional everywhere.
+
+Main goal of this pass
+
+Make FoundFolio feel less like:
+
+a set of polished screens
+
+and more like:
+
+a coherent, deployable product
+
+Working style
+
+Please work in this order:
+
+Inspect the current implementation after the first UI pass.
+
+Identify the remaining UX issues, especially around navigation and context.
+
+Make focused code changes to address those issues.
+
+Do not overdesign or introduce unnecessary new patterns.
+
+Summarize:
+
+what you changed
+
+which files you touched
+
+how the changes improve product usability
+
+Quality bar
+
+As you work, keep asking:
+
+Is there always an obvious next step?
+
+Can users get back to where they came from?
+
+Does each page feel connected to the rest of the system?
+
+Does the empty state feel intentional?
+
+Does the product now feel more complete and real?
+
+Final instruction
+
+Do not just give advice. Implement the second-pass UX polish in code while preserving all existing working logic and the good visual improvements already made.

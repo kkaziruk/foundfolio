@@ -1,4 +1,4 @@
-import { ArrowLeft, MapPin, Tag, Calendar } from "lucide-react";
+import { ArrowLeft, MapPin, Tag, Calendar, CheckCircle, ArrowRight } from "lucide-react";
 import { Item } from "../lib/supabase";
 
 interface ItemDetailProps {
@@ -45,8 +45,10 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
 
       <div className="max-w-2xl mx-auto px-4 py-6 pb-12">
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden" style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04)" }}>
-
+        <div
+          className="bg-white rounded-2xl border border-slate-200 overflow-hidden"
+          style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04)" }}
+        >
           {/* Image */}
           {item.photo_url ? (
             <div className="w-full aspect-[4/3] sm:aspect-[16/7] overflow-hidden bg-slate-100">
@@ -112,13 +114,48 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               )}
             </div>
 
-            {/* CTA note */}
-            <div className="mt-6 pt-5 border-t border-slate-100">
-              <p className="text-sm text-slate-500 leading-relaxed">
-                If this looks like your item, visit <span className="font-semibold text-slate-700">{item.building}</span> to claim it. Bring your student ID.
-              </p>
+            {/* Claim CTA — actionable callout */}
+            <div className="mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <ArrowRight className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-blue-900 mb-1">
+                    Think this is yours?
+                  </p>
+                  <p className="text-sm text-blue-800 mb-3">
+                    Visit the lost &amp; found desk at{" "}
+                    <span className="font-semibold">{item.building}</span> to claim it.
+                  </p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="text-xs text-blue-700">Bring your student ID or NetID</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="text-xs text-blue-700">Be ready to describe the item in detail</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                      <span className="text-xs text-blue-700">Items are held at the building's front desk</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+
+        {/* Back link at bottom */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={onBack}
+            className="text-sm text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            ← Search for another item
+          </button>
         </div>
       </div>
 

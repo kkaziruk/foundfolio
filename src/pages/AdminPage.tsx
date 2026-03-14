@@ -354,6 +354,36 @@ export default function AdminPage() {
             </div>
           )}
 
+        {/* Breadcrumb context */}
+        <div className="mb-4 flex items-center gap-1.5 text-xs text-slate-400 select-none">
+          <span className="font-medium text-slate-600">{campusName || campus.toUpperCase()}</span>
+          <span>›</span>
+          {selectedBuildingId === ALL_BUILDINGS_ID ? (
+            <>
+              <span>All Buildings</span>
+              {showCampusAdminPanels && (
+                <>
+                  <span>›</span>
+                  <span className="font-medium text-slate-700 capitalize">{adminView}</span>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setSelectedBuildingId(ALL_BUILDINGS_ID)}
+                className="hover:text-slate-700 transition-colors underline underline-offset-2"
+              >
+                All Buildings
+              </button>
+              <span>›</span>
+              <span className="font-medium text-slate-700">{selectedBuilding?.name ?? "Building"}</span>
+              <span>›</span>
+              <span className="font-medium text-slate-700">Inventory</span>
+            </>
+          )}
+        </div>
+
         <div className="space-y-6">
           {showCampusAdminPanels ? (
             <>

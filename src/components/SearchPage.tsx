@@ -1,6 +1,6 @@
 // src/pages/SearchPage.tsx
-import React, { useEffect, useState } from "react";
-import { Search, SlidersHorizontal, X, MapPin, Package } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Search, SlidersHorizontal, X, MapPin, Package, ChevronDown } from "lucide-react";
 import { supabase, Item } from "../lib/supabase";
 
 interface SearchPageProps {
@@ -8,53 +8,55 @@ interface SearchPageProps {
   onViewItem: (item: Item) => void;
 }
 
-const CATEGORIES = [
-  "All Categories",
-  "Jacket/Coat",
-  "Sweatshirt/Hoodie",
-  "Shirt/Top",
-  "Pants/Shorts",
-  "Shoes",
-  "Hat/Beanie",
-  "Scarf/Gloves",
-  "Jewelry",
-  "Watch",
-  "Sunglasses",
-  "Glasses/Contacts",
-  "Backpack",
-  "Purse/Handbag",
-  "Reusable Bag",
-  "Lunchbox/Tupperware",
-  "Wallet",
-  "Keys",
-  "ID Card/License",
-  "Credit/Debit Card",
-  "Passport",
-  "Bike Lock",
-  "Phone",
-  "Laptop",
-  "Tablet/iPad",
-  "Headphones/Earbuds",
-  "Charger/Cable",
-  "USB Drive",
-  "Calculator",
-  "Camera",
-  "Gaming Device",
-  "Textbook",
-  "Notebook",
-  "Planner/Binder",
-  "Folder",
-  "Writing Utensils",
-  "Medication",
-  "Medical Device",
-  "Cosmetics/Makeup",
-  "Hair Accessories",
-  "Water Bottle",
-  "Sports Equipment",
-  "Musical Instrument",
-  "Umbrella",
-  "Other",
+// Quick-launch chips shown before first search
+const QUICK_CHIPS: { label: string; query: string; icon: string }[] = [
+  { label: "Phone",       query: "phone",       icon: "📱" },
+  { label: "Keys",        query: "keys",        icon: "🔑" },
+  { label: "Wallet",      query: "wallet",      icon: "👜" },
+  { label: "Backpack",    query: "backpack",    icon: "🎒" },
+  { label: "Headphones",  query: "headphones",  icon: "🎧" },
+  { label: "Laptop",      query: "laptop",      icon: "💻" },
+  { label: "Water Bottle",query: "water bottle",icon: "🍶" },
+  { label: "Jacket",      query: "jacket",      icon: "🧥" },
+  { label: "Glasses",     query: "glasses",     icon: "👓" },
+  { label: "AirPods",     query: "airpods",     icon: "🎵" },
+  { label: "ID Card",     query: "id card",     icon: "🪪" },
+  { label: "Umbrella",    query: "umbrella",    icon: "☂️" },
 ];
+
+// Grouped categories for the filter panel
+const CATEGORY_GROUPS: { label: string; items: string[] }[] = [
+  {
+    label: "Clothing",
+    items: ["Jacket/Coat","Sweatshirt/Hoodie","Shirt/Top","Pants/Shorts","Shoes","Hat/Beanie","Scarf/Gloves"],
+  },
+  {
+    label: "Accessories",
+    items: ["Jewelry","Watch","Sunglasses","Glasses/Contacts"],
+  },
+  {
+    label: "Bags",
+    items: ["Backpack","Purse/Handbag","Reusable Bag","Lunchbox/Tupperware"],
+  },
+  {
+    label: "Essentials",
+    items: ["Wallet","Keys","ID Card/License","Credit/Debit Card","Passport","Bike Lock"],
+  },
+  {
+    label: "Electronics",
+    items: ["Phone","Laptop","Tablet/iPad","Headphones/Earbuds","Charger/Cable","USB Drive","Calculator","Camera","Gaming Device"],
+  },
+  {
+    label: "Academic",
+    items: ["Textbook","Notebook","Planner/Binder","Folder","Writing Utensils"],
+  },
+  {
+    label: "Other",
+    items: ["Medication","Medical Device","Cosmetics/Makeup","Hair Accessories","Water Bottle","Sports Equipment","Musical Instrument","Umbrella","Other"],
+  },
+];
+
+const ALL_CATEGORIES_FLAT = ["All Categories", ...CATEGORY_GROUPS.flatMap((g) => g.items)];
 
 function relativeDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
@@ -80,6 +82,8 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
   const [results, setResults] = useState<Item[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const activeFilterCount =
     (selectedCategory !== "All Categories" ? 1 : 0) +
@@ -120,10 +124,8 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
     return () => { cancelled = true; };
   }, [campus]);
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-
-    if (!searchTerm.trim()) {
+  const runSearch = async (term: string, cat: string, bldg: string) => {
+    if (!term.trim()) {
       setHasSearched(true);
       setResults([]);
       return;
@@ -133,13 +135,8 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
     setHasSearched(true);
 
     try {
-      await supabase.from("searches").insert({
-        search_term: searchTerm.trim(),
-        campus: campus,
-      });
-    } catch {
-      // Ignore logging failures
-    }
+      await supabase.from("searches").insert({ search_term: term.trim(), campus });
+    } catch { /* ignore */ }
 
     try {
       let query = supabase
@@ -148,23 +145,16 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
         .eq("status", "available")
         .eq("campus_slug", campus);
 
-      if (selectedCategory !== "All Categories") {
-        query = query.eq("category", selectedCategory);
-      }
+      if (cat !== "All Categories") query = query.eq("category", cat);
+      if (bldg !== "All Buildings") query = query.eq("building", bldg);
 
-      if (selectedBuilding !== "All Buildings") {
-        query = query.eq("building", selectedBuilding);
-      }
-
-      if (searchTerm.trim()) {
-        const keywords = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
-
+      if (term.trim()) {
+        const keywords = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
         if (keywords.length) {
           const escaped = keywords.map((k) =>
             k.replace(/%/g, "\\%").replace(/_/g, "\\_")
           );
-          const orConditions = escaped.map((k) => `description.ilike.%${k}%`).join(",");
-          query = query.or(orConditions);
+          query = query.or(escaped.map((k) => `description.ilike.%${k}%`).join(","));
         }
       }
 
@@ -173,7 +163,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
         .limit(100);
 
       if (error) throw error;
-
       setResults(data || []);
     } catch (err) {
       console.error("Search failed:", err);
@@ -181,6 +170,17 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    runSearch(searchTerm, selectedCategory, selectedBuilding);
+  };
+
+  const handleQuickChip = (query: string) => {
+    setSearchTerm(query);
+    inputRef.current?.focus();
+    runSearch(query, selectedCategory, selectedBuilding);
   };
 
   const clearFilters = () => {
@@ -193,7 +193,10 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
       {/* ── Hero search section ── */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-2xl mx-auto px-4 pt-8 pb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1 text-center" style={{ fontFamily: "Poppins, system-ui, sans-serif" }}>
+          <h1
+            className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1 text-center"
+            style={{ fontFamily: "Poppins, system-ui, sans-serif" }}
+          >
             Lost something?
           </h1>
           <p className="text-sm text-slate-500 text-center mb-6">
@@ -204,8 +207,12 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
             {/* Search row */}
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4.5 h-4.5 pointer-events-none" style={{ width: "18px", height: "18px" }} />
+                <Search
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  style={{ width: "18px", height: "18px" }}
+                />
                 <input
+                  ref={inputRef}
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -237,7 +244,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+                className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors select-none"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>Filters</span>
@@ -246,6 +253,9 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                     {activeFilterCount}
                   </span>
                 )}
+                <ChevronDown
+                  className={`w-3.5 h-3.5 ml-0.5 transition-transform ${showFilters ? "rotate-180" : ""}`}
+                />
               </button>
 
               {activeFilterCount > 0 && (
@@ -262,38 +272,69 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
 
             {/* Filter panel */}
             {showFilters && (
-              <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Category — grouped select */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
                     Category
                   </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="ff-input text-sm"
-                    style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
-                  >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="ff-input text-sm appearance-none pr-8"
+                      style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
+                    >
+                      <option value="All Categories">All Categories</option>
+                      {CATEGORY_GROUPS.map((group) => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.items.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  </div>
+                  {selectedCategory !== "All Categories" && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("All Categories")}
+                      className="mt-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                    >
+                      × Clear
+                    </button>
+                  )}
                 </div>
 
+                {/* Building */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
                     Building
                   </label>
-                  <select
-                    value={selectedBuilding}
-                    onChange={(e) => setSelectedBuilding(e.target.value)}
-                    disabled={buildingsLoading || buildings.length <= 1}
-                    className="ff-input text-sm disabled:opacity-60"
-                    style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
-                  >
-                    {buildings.map((building) => (
-                      <option key={building} value={building}>{building}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={selectedBuilding}
+                      onChange={(e) => setSelectedBuilding(e.target.value)}
+                      disabled={buildingsLoading || buildings.length <= 1}
+                      className="ff-input text-sm appearance-none pr-8 disabled:opacity-60"
+                      style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem" }}
+                    >
+                      {buildings.map((building) => (
+                        <option key={building} value={building}>{building}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  </div>
+                  {selectedBuilding !== "All Buildings" && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBuilding("All Buildings")}
+                      className="mt-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                    >
+                      × Clear
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -301,7 +342,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
         </div>
       </div>
 
-      {/* ── Results area ── */}
+      {/* ── Results / idle area ── */}
       <div className="max-w-5xl mx-auto px-4 py-6">
 
         {/* Loading */}
@@ -312,9 +353,9 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
           </div>
         )}
 
-        {/* Empty states */}
+        {/* No-results state */}
         {!isSearching && hasSearched && results.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
             {searchTerm.trim() === "" ? (
               <>
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
@@ -331,19 +372,25 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                   <Package className="w-6 h-6 text-slate-400" />
                 </div>
                 <p className="text-base font-semibold text-slate-700">No items found</p>
-                <p className="text-sm text-slate-400 mt-1 max-w-xs">
-                  Try different keywords or check back later as new items are logged daily.
+                <p className="text-sm text-slate-400 mt-1 max-w-sm">
+                  No match for <span className="font-medium text-slate-600">"{searchTerm}"</span>. Try different keywords or check back — new items are logged daily.
                 </p>
+                <button
+                  onClick={() => { setSearchTerm(""); setHasSearched(false); inputRef.current?.focus(); }}
+                  className="mt-4 text-sm text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                >
+                  Clear search
+                </button>
               </>
             )}
           </div>
         )}
 
-        {/* Results */}
+        {/* Results grid */}
         {!isSearching && results.length > 0 && (
           <>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-              {results.length} result{results.length !== 1 ? "s" : ""} found
+              {results.length} result{results.length !== 1 ? "s" : ""}
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -356,7 +403,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                     className="text-left bg-white rounded-xl border border-slate-200 overflow-hidden group transition-all duration-150 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" }}
                   >
-                    {/* Image */}
                     <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100">
                       {item.photo_url ? (
                         <img
@@ -366,28 +412,24 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-slate-100 to-slate-200">
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
                           <Package className="w-7 h-7 text-slate-300" />
                         </div>
                       )}
                     </div>
 
-                    {/* Body */}
                     <div className="p-3">
                       <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 mb-2">
                         {item.description}
                       </p>
-
                       <div className="space-y-1">
                         <span className="ff-chip ff-chip-blue text-[11px]">
                           {item.category}
                         </span>
-
                         <div className="flex items-center gap-1 mt-1">
                           <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                           <span className="text-[11px] text-slate-500 truncate">{item.building}</span>
                         </div>
-
                         {dateStr && (
                           <p className="text-[11px] text-slate-400">{dateStr}</p>
                         )}
@@ -400,16 +442,49 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
           </>
         )}
 
-        {/* Pre-search idle state */}
+        {/* ── Pre-search idle state ── */}
         {!isSearching && !hasSearched && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-              <Search className="w-6 h-6 text-slate-400" />
+          <div>
+            {/* Quick-launch chips */}
+            <div className="mb-8">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                Common items
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_CHIPS.map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => handleQuickChip(chip.query)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all duration-150"
+                    style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}
+                  >
+                    <span role="img" aria-hidden="true" className="text-base leading-none">{chip.icon}</span>
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="text-base font-semibold text-slate-700">Search to see results</p>
-            <p className="text-sm text-slate-400 mt-1 max-w-xs">
-              Type what you lost above and tap Search
-            </p>
+
+            {/* Tip */}
+            <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Search className="w-3.5 h-3.5 text-slate-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-0.5">Search tip</p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Be specific — include color, brand, or distinguishing features. Try{" "}
+                  <button
+                    onClick={() => handleQuickChip("black water bottle")}
+                    className="text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                  >
+                    "black water bottle"
+                  </button>{" "}
+                  instead of just "bottle".
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
