@@ -308,12 +308,12 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
           value={available}
           sub={`Avg age: ${fmtHours(avgHoursUnpicked)}`}
           icon={<Clock className="w-5 h-5" />}
-          color="text-amber-600"
-          bgColor="bg-amber-50"
+          color="text-slate-600"
+          bgColor="bg-slate-100"
         />
         <StatCard
           label="Avg Time to Claim"
-          value={fmtHours(avgHoursToPickup)}
+          value={avgHoursToPickup == null ? "No claims yet" : fmtHours(avgHoursToPickup)}
           icon={<TrendingUp className="w-5 h-5" />}
           color="text-slate-600"
           bgColor="bg-slate-100"
@@ -405,10 +405,10 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-red-400">
+        <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-amber-400">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-              <Shield className="w-5 h-5 text-red-500" />
+            <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Shield className="w-5 h-5 text-amber-500" />
             </div>
             <div>
               <div className="text-base font-semibold text-slate-900">Sensitive Items</div>
@@ -416,7 +416,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
             </div>
           </div>
           <div className="flex items-end gap-2">
-            <span className="text-4xl font-bold text-red-500">{sensitive72}</span>
+            <span className="text-4xl font-bold text-amber-600">{sensitive72}</span>
             <span className="text-sm text-slate-400 mb-1">/ {sensitiveTotal} total</span>
           </div>
         </div>
@@ -448,7 +448,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#475569" }} axisLine={false} tickLine={false} width={120} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="Available" fill="#F59E0B" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="Available" fill="#3B82F6" radius={[0, 4, 4, 0]} />
                   <Bar dataKey="Claimed" fill="#10B981" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -473,7 +473,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                         <td className="py-3 pr-4 font-medium text-slate-900">{r.building_name}</td>
                         <td className="py-3 pr-4 text-slate-600">{r.items_logged}</td>
                         <td className="py-3 pr-4">
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold">{r.items_available}</span>
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">{r.items_available}</span>
                         </td>
                         <td className="py-3 pr-4">
                           <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">{r.items_picked_up}</span>
