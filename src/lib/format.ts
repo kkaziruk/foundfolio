@@ -10,3 +10,9 @@ export function toTitleCase(text: string) {
     })
     .join(" ");
 }
+
+export function toSentenceCase(text: string) {
+  if (!text) return text;
+  const t = text.trim().toLowerCase();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}

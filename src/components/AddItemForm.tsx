@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { BRAND } from "../lib/brand";
-import { toTitleCase } from "../lib/format";
+import { toTitleCase, toSentenceCase } from "../lib/format";
+import { useAuth } from "../context/AuthContext";
 
 interface AddItemFormProps {
   onSuccess: () => void;
@@ -247,6 +248,7 @@ function FieldLabel({
 }
 
 export default function AddItemForm({ onSuccess, campus, building }: AddItemFormProps) {
+  const { profile, user } = useAuth();
   const lockedBuilding = useMemo(() => !!building && building !== "All Buildings", [building]);
 
   const isMobileSwipe = useMediaQuery("(pointer: coarse) and (max-width: 768px)");
@@ -282,6 +284,17 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     category: false,
     specific_location: false,
   });
+
+  useEffect(() => {
+    const name =
+      (profile as { full_name?: string } | null)?.full_name ||
+      user?.user_metadata?.full_name ||
+      user?.email ||
+      "";
+    if (name) {
+      setFormData((prev) => ({ ...prev, logged_by_name: name }));
+    }
+  }, [profile, user]);
 
   const findCategoryByName = (name: string) =>
     categories.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase()) ?? null;
@@ -510,7 +523,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     e.preventDefault();
     if (isSubmitting) return;
 
-    if (!formData.logged_by_name.trim()) return alert("Staff name is required.");
     if (!formData.description.trim()) return alert("Description is required.");
     if (!formData.category.trim()) return alert("Category is required.");
     if (!(lockedBuilding ? (building as string) : formData.building).trim())
@@ -552,7 +564,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
       const payload = {
         logged_by_name: formData.logged_by_name.trim(),
-        description: toTitleCase(formData.description.trim()),
+        description: toSentenceCase(formData.description.trim()),
         category: formData.category.trim(),
         building: buildingName,
         specific_location: formData.specific_location.trim(),
@@ -731,15 +743,14 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             {/* RIGHT: Fields */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 min-w-0">
               <div className="mb-5">
-                <FieldLabel icon={User} text="Logged by" required />
+                <FieldLabel icon={User} text="Logged by" />
                 <input
                   type="text"
                   name="logged_by_name"
                   value={formData.logged_by_name}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Your name"
-                  className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                  readOnly
+                  placeholder="Loading…"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 cursor-default focus:outline-none"
                 />
               </div>
 
@@ -1079,15 +1090,14 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
             <div className="mb-4 text-sm font-extrabold text-slate-900">Context</div>
 
             <div className="mb-5">
-              <FieldLabel icon={User} text="Logged by" required />
+              <FieldLabel icon={User} text="Logged by" />
               <input
                 type="text"
                 name="logged_by_name"
                 value={formData.logged_by_name}
-                onChange={handleInputChange}
-                required
-                placeholder="Your name"
-                className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                readOnly
+                placeholder="Loading…"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 cursor-default focus:outline-none"
               />
             </div>
 

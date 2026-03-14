@@ -25,7 +25,6 @@ type BuildingRow = {
 };
 
 const ALL_BUILDINGS_ID = "__ALL__";
-const HINT_KEY = "ff_admin_building_hint_dismissed";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -43,21 +42,6 @@ export default function AdminPage() {
 
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
   const [campusName, setCampusName] = useState<string>("");
-
-  const [showBuildingHint, setShowBuildingHint] = useState(() => {
-    try {
-      return localStorage.getItem(HINT_KEY) !== "1";
-    } catch {
-      return true;
-    }
-  });
-
-  const dismissBuildingHint = useCallback(() => {
-    setShowBuildingHint(false);
-    try {
-      localStorage.setItem(HINT_KEY, "1");
-    } catch {}
-  }, []);
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -335,24 +319,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Hint */}
-        {!isBuildingManager &&
-          selectedBuildingId === ALL_BUILDINGS_ID &&
-          showBuildingHint && (
-            <div className="mb-5 rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 flex items-start gap-3">
-              <Building2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0 text-sm text-blue-700">
-                Select a <span className="font-semibold">Building</span> above to view its inventory and export a CSV.
-              </div>
-              <button
-                onClick={dismissBuildingHint}
-                className="text-blue-400 hover:text-blue-600 transition-colors flex-shrink-0"
-                aria-label="Dismiss"
-              >
-                <span className="text-lg leading-none">×</span>
-              </button>
-            </div>
-          )}
 
         {/* Breadcrumb context */}
         <div className="mb-4 flex items-center gap-1.5 text-xs text-slate-400 select-none">

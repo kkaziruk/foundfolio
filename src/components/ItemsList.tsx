@@ -9,6 +9,12 @@ import {
   MoveRight,
   MoreHorizontal,
   ImageIcon,
+  Eye,
+  MapPin,
+  Tag,
+  Building2,
+  User,
+  Calendar,
 } from "lucide-react";
 import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
@@ -75,6 +81,9 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   // Overflow menu for each row
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Staff item detail panel
+  const [detailItem, setDetailItem] = useState<Item | null>(null);
 
 useEffect(() => {
   (async () => {
@@ -691,21 +700,19 @@ useEffect(() => {
                           {openMenuId === item.id && (
                             <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-48" style={{ boxShadow: "0 4px 16px 0 rgb(0 0 0 / 0.10)" }}>
                               <button
+                                onClick={() => { setOpenMenuId(null); setDetailItem(item); }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                              >
+                                <Eye className="w-4 h-4 text-slate-400" />
+                                View details
+                              </button>
+                              <button
                                 onClick={() => { setOpenMenuId(null); openMoveModal(item); }}
                                 className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
                               >
                                 <MoveRight className="w-4 h-4 text-slate-400" />
                                 Transfer item
                               </button>
-                              {item.status === "available" && (
-                                <button
-                                  onClick={() => { setOpenMenuId(null); openClaimModal(item); }}
-                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
-                                >
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                  Mark as Claimed
-                                </button>
-                              )}
                               <div className="my-1 border-t border-slate-100" />
                               <button
                                 onClick={() => { setOpenMenuId(null); handleDelete(item.id); }}
@@ -993,6 +1000,72 @@ useEffect(() => {
       )}
 
       {/* Claim modal UI not included here (you already had state + handlers). */}
+      {/* Staff item detail modal */}
+      {detailItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-2.5">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${detailItem.status === "available" ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>
+                  {detailItem.status === "available" ? "Available" : "Claimed"}
+                </span>
+                <span className="text-sm font-medium text-slate-500">{detailItem.category}</span>
+              </div>
+              <button onClick={() => setDetailItem(null)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            {detailItem.photo_url && (
+              <div className="w-full aspect-video bg-slate-100 overflow-hidden">
+                <img src={detailItem.photo_url} alt={detailItem.description} className="w-full h-full object-cover" />
+              </div>
+            )}
+
+            <div className="p-5 space-y-4">
+              <h2 className="text-lg font-bold text-slate-900">{detailItem.description}</h2>
+
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-start gap-2 text-slate-600">
+                  <Building2 className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                  <span><span className="font-medium text-slate-700">Building:</span> {displayBuildingName(campus, detailItem.building)}</span>
+                </div>
+                <div className="flex items-start gap-2 text-slate-600">
+                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                  <span><span className="font-medium text-slate-700">Location:</span> {detailItem.specific_location}</span>
+                </div>
+                <div className="flex items-start gap-2 text-slate-600">
+                  <Tag className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                  <span><span className="font-medium text-slate-700">Category:</span> {detailItem.category}</span>
+                </div>
+                {(detailItem as any).logged_by_name && (
+                  <div className="flex items-start gap-2 text-slate-600">
+                    <User className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                    <span><span className="font-medium text-slate-700">Logged by:</span> {(detailItem as any).logged_by_name}</span>
+                  </div>
+                )}
+                <div className="flex items-start gap-2 text-slate-600">
+                  <Calendar className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                  <span><span className="font-medium text-slate-700">Date logged:</span> {formatLoggedAt((detailItem as any).logged_at)}</span>
+                </div>
+              </div>
+
+              {detailItem.status === "available" && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => { setDetailItem(null); openClaimModal(detailItem); }}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white bg-green-600 hover:bg-green-700 transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Mark as Claimed
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showClaimModal && selectedItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
