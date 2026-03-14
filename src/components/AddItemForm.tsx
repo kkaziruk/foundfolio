@@ -252,7 +252,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const lockedBuilding = useMemo(() => !!building && building !== "All Buildings", [building]);
 
   const isMobileSwipe = useMediaQuery("(pointer: coarse) and (max-width: 768px)");
-  const [step, setStep] = useState(0);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -266,6 +265,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [formData, setFormData] = useState({
     logged_by_name: "",
@@ -381,11 +381,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     };
   }, [photoPreview]);
 
-  useEffect(() => {
-    if (!isMobileSwipe) return;
-    if ((formData.photo_url || photoPreview) && step === 0) setStep(1);
-  }, [isMobileSwipe, formData.photo_url, photoPreview, step]);
-
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -393,10 +388,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
 
     if (name === "description" || name === "category" || name === "specific_location") {
       setAiFilled((prev) => ({ ...prev, [name]: false }));
-    }
-
-    if (name === "category" && isMobileSwipe && step === 1 && value.trim()) {
-      setStep(2);
     }
 
     setFormData((prev) => {
@@ -437,7 +428,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     setAiFilled({ description: false, category: false, specific_location: false });
 
     if (cameraInputRef.current) cameraInputRef.current.value = "";
-    if (isMobileSwipe) setStep(0);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -516,6 +506,16 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     } finally {
       setIsUploading(false);
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      const syntheticEvent = { target: { files: e.dataTransfer.files } } as unknown as React.ChangeEvent<HTMLInputElement>;
+      handleFileSelect(syntheticEvent);
     }
   };
 
@@ -608,7 +608,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       setUploadedPhotoPath("");
 
       if (cameraInputRef.current) cameraInputRef.current.value = "";
-      if (isMobileSwipe) setStep(0);
 
       onSuccess();
     } catch (err) {
@@ -659,25 +658,27 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       {loadingOptions ? (
         <div className="px-6 py-6 text-slate-600">Loading buildings and categories…</div>
       ) : (
-        <div className="px-6 py-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* LEFT: Photo */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 min-w-0">
-              <div className="flex items-center justify-between min-w-0 gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white shrink-0">
-                    <ImageIcon className="h-5 w-5 text-slate-700" />
-                  </span>
-                  <div className="text-sm font-extrabold text-slate-900 truncate">Photo</div>
-                </div>
-
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shrink-0">
-                  <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
-                  Auto-detects details
+        <div className="px-6 pb-6">
+          {/* Photo: full-width at top with drag-and-drop */}
+          <div
+            className={`mb-5 rounded-2xl border bg-slate-50 p-5 transition-colors ${isDragOver ? "border-blue-400 bg-blue-50" : "border-slate-200"}`}
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+          >
+            <div className="flex items-center justify-between min-w-0 gap-3 mb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white shrink-0">
+                  <ImageIcon className="h-5 w-5 text-slate-700" />
                 </span>
+                <div className="text-sm font-extrabold text-slate-900 truncate">Photo</div>
               </div>
-
-              <div className="mt-5">
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shrink-0">
+                <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
+                Auto-detects details
+              </span>
+            </div>
+            <div>
                 {photoPreview ? (
                   <div className="space-y-3">
                     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -709,52 +710,42 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                     {analyzingBanner}
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <button
-                      type="button"
+                  <div
+                      className={`flex cursor-pointer items-center gap-5 rounded-2xl border bg-white px-6 py-5 transition-colors hover:border-slate-300 ${isDragOver ? "border-blue-300" : "border-dashed border-slate-200"}`}
                       onClick={() => cameraInputRef.current?.click()}
-                      className="w-full rounded-2xl border border-slate-200 bg-white p-6 text-left hover:border-slate-300"
                     >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <span
-                          className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shrink-0"
-                          style={{ backgroundColor: BRAND.ink }}
-                        >
-                          <Camera className="h-7 w-7" />
-                        </span>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="text-base font-extrabold text-slate-900 truncate">Take / Upload Photo</div>
-                          <div className="mt-1 text-sm text-slate-600">Tap once. We’ll fill in the details.</div>
-                        </div>
+                      <span
+                        className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shrink-0"
+                        style={{ backgroundColor: BRAND.ink }}
+                      >
+                        <Camera className="h-7 w-7" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base font-extrabold text-slate-900">Click or drag &amp; drop to upload</div>
+                        <div className="mt-1 text-sm text-slate-500">Auto-detects item, category, and location from the photo.</div>
                       </div>
-
-                      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                        Tip: include the item and any labels in frame for best results. Try not to include brand names.
-                      </div>
-                    </button>
-
-                    {analyzingBanner}
-                  </div>
+                    </div>
                 )}
-              </div>
             </div>
+          </div>
 
-            {/* RIGHT: Fields */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 min-w-0">
-              <div className="mb-5">
+          {/* Fields */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 min-w-0">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              {/* Logged by */}
+              <div>
                 <FieldLabel icon={User} text="Logged by" />
                 <input
                   type="text"
                   name="logged_by_name"
                   value={formData.logged_by_name}
                   readOnly
-                  placeholder="Loading…"
+                  placeholder="Loading..."
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 cursor-default focus:outline-none"
                 />
               </div>
 
-              <div className="mb-5">
+              <div>
                 <FieldLabel icon={FileText} text="Description" required ai={aiFilled.description} />
                 <input
                   type="text"
@@ -768,7 +759,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                 />
               </div>
 
-              <div className="mb-5">
+              <div>
                 <FieldLabel icon={Building2} text="Building" required />
                 {lockedBuilding ? (
                   <input
@@ -794,7 +785,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                 )}
               </div>
 
-              <div className="mb-5">
+              <div>
                 <FieldLabel
                   icon={MapPin}
                   text="Where exactly was it found?"
@@ -813,7 +804,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                 />
               </div>
 
-              <div className="mb-5">
+              <div className="sm:col-span-2">
                 <FieldLabel icon={Tag} text="Category" required ai={aiFilled.category} />
                 <select
                   name="category"
@@ -846,32 +837,31 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                 )}
               </div>
 
-              <div className="mb-5">
+              <div className="sm:col-span-2">
                 <FieldLabel icon={StickyNote} text="Additional Notes" />
                 <textarea
                   name="additional_notes"
                   value={formData.additional_notes}
                   onChange={handleInputChange}
-                  placeholder="Any extra details staff should know…"
+                  placeholder="Any extra details staff should know..."
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
                   rows={3}
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting || busy}
-                className="ff-btn-primary w-full py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderRadius: "1rem" }}
-              >
-                {isSubmitting ? "Logging..." : "Log Item"}
-              </button>
-
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                <span className="inline-flex items-center gap-1">
+              <div className="sm:col-span-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || busy}
+                  className="ff-btn-primary w-full py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ borderRadius: "1rem" }}
+                >
+                  {isSubmitting ? "Logging..." : "Log Item"}
+                </button>
+                <div className="mt-3 flex items-center gap-1 text-xs text-slate-500">
                   <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
                   Auto-fill is editable
-                </span>
+                </div>
               </div>
             </div>
           </div>
@@ -884,67 +874,53 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
     </>
   );
 
-  // Mobile UI (3 pages)
-  const MobileUI = (
-    <>
-      <div className="border-b border-slate-100 px-5 py-4">
-        <div className="flex items-start justify-between gap-3 min-w-0">
-          <div className="min-w-0">
-            <h2 className="text-xl font-extrabold text-slate-900">Log Item</h2>
-            <p className="mt-1 text-sm text-slate-600">Swipe to move through steps.</p>
-          </div>
-
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 shrink-0">
-            <Clock className="h-4 w-4" />
-            <span className="font-medium">~10 sec</span>
+  // Mobile UI - single-column scroll
+    const MobileUI = (
+      <>
+        <div className="border-b border-slate-100 px-5 py-4">
+          <div className="flex items-center justify-between min-w-0 gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl font-extrabold text-slate-900">Log Item</h2>
+              <p className="mt-1 text-sm text-slate-600">Fill in the details and tap Log Item.</p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 shrink-0">
+              <Clock className="h-4 w-4" />
+              <span className="font-medium">~10 sec</span>
+            </div>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="h-1.5 w-10 rounded-full transition-all"
-              style={{ backgroundColor: i === step ? BRAND.ink : "#e5e7eb" }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {busy && <div className="px-5 pt-3">{analyzingBanner}</div>}
-
-      {loadingOptions ? (
-        <div className="px-5 py-6 text-slate-600">Loading…</div>
-      ) : (
-        <SnapPager step={step} setStep={setStep}>
-          {/* Step 0: Photo */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 min-w-0">
-            <div className="flex items-center justify-between min-w-0 gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white shrink-0">
-                  <ImageIcon className="h-5 w-5 text-slate-700" />
+        {loadingOptions ? (
+          <div className="px-5 py-6 text-slate-600">Loading…</div>
+        ) : (
+          <div className="flex flex-col gap-4 p-5">
+            {/* Photo */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shrink-0">
+                    <ImageIcon className="h-4 w-4 text-slate-700" />
+                  </span>
+                  <div className="text-sm font-extrabold text-slate-900">Photo</div>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shrink-0">
+                  <Sparkles className="h-3 w-3" style={{ color: BRAND.accent }} />
+                  Auto-detects
                 </span>
-                <div className="text-sm font-extrabold text-slate-900 truncate">Photo</div>
               </div>
 
-              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shrink-0">
-                <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
-                Auto-detects
-              </span>
-            </div>
+              {busy && analyzingBanner}
 
-            <div className="mt-4">
               {photoPreview ? (
                 <div className="space-y-3">
                   <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
                     <img
                       src={photoPreview}
                       alt="Preview"
-                      className="h-72 w-full object-cover"
+                      className="w-full object-cover"
+                      style={{ maxHeight: "240px", WebkitUserDrag: "none", userSelect: "none" }}
                       draggable={false}
-                      style={{ WebkitUserDrag: "none", userSelect: "none", pointerEvents: "none" }}
                     />
-
                     <button
                       type="button"
                       onClick={handleClearPhoto}
@@ -954,200 +930,169 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
                     >
                       <X className="h-5 w-5" />
                     </button>
-
                     {formData.sensitive ? (
                       <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
                         Sensitive item detected — photo will not be stored.
                       </div>
                     ) : null}
                   </div>
-
-                  {analyzingBanner}
-                  <div className="text-xs text-slate-500">Swipe left to continue.</div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="w-full rounded-2xl bg-white p-5 text-left transition-colors active:bg-slate-50"
-                    style={{ border: "1.5px dashed #CBD5E1" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#94A3B8"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#CBD5E1"; }}
-                  >
-                    <div className="flex flex-col items-center text-center gap-3 py-3">
-                      <span
-                        className="inline-flex h-16 w-16 items-center justify-center rounded-2xl text-white"
-                        style={{ backgroundColor: BRAND.ink }}
-                      >
-                        <Camera className="h-8 w-8" />
-                      </span>
-
-                      <div>
-                        <div className="text-base font-extrabold text-slate-900">Take a photo or upload</div>
-                        <div className="mt-1 text-sm text-slate-500">AI fills in the details automatically</div>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
-                        <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
-                        <span className="text-xs font-semibold text-slate-600">Auto-detects item details</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 text-center">
-                      Tip: keep labels in frame · avoid brand names
-                    </div>
-                  </button>
-
-                  {analyzingBanner}
-                  <div className="text-xs text-slate-500 text-center">Swipe left after adding a photo.</div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Step 1: Identify */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 min-w-0">
-            <div className="mb-4 text-sm font-extrabold text-slate-900">Identify</div>
-
-            <div className="mb-5">
-              <FieldLabel icon={FileText} text="Description" required ai={aiFilled.description} />
-              <input
-                type="text"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                required
-                placeholder="e.g., Black plastic water bottle"
-                className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
-                style={{ ...aiFieldStyle(aiFilled.description), boxShadow: "none" }}
-              />
-            </div>
-
-            <div className="mb-5">
-              <FieldLabel icon={Tag} text="Category" required ai={aiFilled.category} />
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                required
-                className="w-full rounded-xl border px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
-                style={{ ...aiFieldStyle(aiFilled.category) }}
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-
-              {(formData.is_high_value || formData.sensitive) && (
-                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  {formData.is_high_value && (
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold text-slate-800">
-                      High value
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="w-full rounded-2xl bg-white p-5 text-left active:bg-slate-50"
+                  style={{ border: "1.5px dashed #CBD5E1" }}
+                >
+                  <div className="flex flex-col items-center text-center gap-3 py-2">
+                    <span
+                      className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white"
+                      style={{ backgroundColor: BRAND.ink }}
+                    >
+                      <Camera className="h-7 w-7" />
                     </span>
-                  )}
-                  {formData.sensitive && (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-900">
-                      Sensitive
-                    </span>
-                  )}
-                </div>
+                    <div>
+                      <div className="text-base font-extrabold text-slate-900">Take or upload photo</div>
+                      <div className="mt-1 text-sm text-slate-500">We’ll fill in the details automatically.</div>
+                    </div>
+                  </div>
+                </button>
               )}
             </div>
 
-            <div className="mb-2">
-              <FieldLabel icon={Building2} text="Building" required />
-              {lockedBuilding ? (
+            {/* Fields */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-col gap-4">
+              <div>
+                <FieldLabel icon={FileText} text="Description" required ai={aiFilled.description} />
                 <input
                   type="text"
-                  value={formData.building}
-                  disabled
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800"
-                />
-              ) : (
-                <select
-                  name="building"
-                  value={formData.building}
+                  name="description"
+                  value={formData.description}
                   onChange={handleInputChange}
                   required
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
+                  placeholder="e.g., Black plastic water bottle"
+                  className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                  style={{ ...aiFieldStyle(aiFilled.description), boxShadow: "none" }}
+                />
+              </div>
+
+              <div>
+                <FieldLabel icon={Tag} text="Category" required ai={aiFilled.category} />
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full rounded-xl border px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
+                  style={{ ...aiFieldStyle(aiFilled.category) }}
                 >
-                  {buildings.map((b) => (
-                    <option key={b.id} value={b.name}>
-                      {b.name}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
-              )}
+
+                {(formData.is_high_value || formData.sensitive) && (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {formData.is_high_value && (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold text-slate-800">
+                        High value
+                      </span>
+                    )}
+                    {formData.sensitive && (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-900">
+                        Sensitive
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <FieldLabel icon={Building2} text="Building" required />
+                {lockedBuilding ? (
+                  <input
+                    type="text"
+                    value={formData.building}
+                    disabled
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800"
+                  />
+                ) : (
+                  <select
+                    name="building"
+                    value={formData.building}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:outline-none focus:ring-2"
+                  >
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <FieldLabel icon={MapPin} text="Where exactly was it found?" required ai={aiFilled.specific_location} />
+                <input
+                  type="text"
+                  name="specific_location"
+                  value={formData.specific_location}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="e.g., 2nd floor near water fountain, Room 234"
+                  className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                  style={{ ...aiFieldStyle(aiFilled.specific_location), boxShadow: "none" }}
+                />
+              </div>
+
+              <div>
+                <FieldLabel icon={User} text="Logged by" />
+                <input
+                  type="text"
+                  name="logged_by_name"
+                  value={formData.logged_by_name}
+                  readOnly
+                  placeholder="Loading..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 cursor-default focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <FieldLabel icon={StickyNote} text="Additional Notes" />
+                <textarea
+                  name="additional_notes"
+                  value={formData.additional_notes}
+                  onChange={handleInputChange}
+                  placeholder="Any extra details staff should know..."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
+                  rows={3}
+                />
+              </div>
             </div>
 
-            <div className="mt-4 text-xs text-slate-500">Swipe left to continue.</div>
-          </div>
-
-          {/* Step 2: Context + Submit */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 min-w-0">
-            <div className="mb-4 text-sm font-extrabold text-slate-900">Context</div>
-
-            <div className="mb-5">
-              <FieldLabel icon={User} text="Logged by" />
-              <input
-                type="text"
-                name="logged_by_name"
-                value={formData.logged_by_name}
-                readOnly
-                placeholder="Loading…"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 cursor-default focus:outline-none"
-              />
-            </div>
-
-            <div className="mb-5">
-              <FieldLabel icon={MapPin} text="Where exactly was it found?" required ai={aiFilled.specific_location} />
-              <input
-                type="text"
-                name="specific_location"
-                value={formData.specific_location}
-                onChange={handleInputChange}
-                required
-                placeholder="e.g., 2nd floor near water fountain, Room 234"
-                className="w-full rounded-xl border px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
-                style={{ ...aiFieldStyle(aiFilled.specific_location), boxShadow: "none" }}
-              />
-            </div>
-
-            <div className="mb-5">
-              <FieldLabel icon={StickyNote} text="Additional Notes" />
-              <textarea
-                name="additional_notes"
-                value={formData.additional_notes}
-                onChange={handleInputChange}
-                placeholder="Any extra details staff should know…"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2"
-                rows={3}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting || busy}
-              className="ff-btn-primary w-full py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderRadius: "1rem" }}
-            >
-              {isSubmitting ? "Logging..." : "Log Item"}
-            </button>
-
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-              <span className="inline-flex items-center gap-1">
+            {/* Submit */}
+            <div>
+              <button
+                type="submit"
+                disabled={isSubmitting || busy}
+                className="ff-btn-primary w-full py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderRadius: "1rem" }}
+              >
+                {isSubmitting ? "Logging..." : "Log Item"}
+              </button>
+              <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
                 <Sparkles className="h-3.5 w-3.5" style={{ color: BRAND.accent }} />
-                Auto-fill is editable
-              </span>
-              <span>You can edit this later</span>
+                Auto-filled fields are editable
+              </div>
             </div>
           </div>
-        </SnapPager>
-      )}
-    </>
-  );
+        )}
+      </>
+    );
 
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white shadow-sm">

@@ -15,6 +15,9 @@ import {
   Building2,
   User,
   Calendar,
+  LayoutGrid,
+  List,
+  AlertTriangle,
 } from "lucide-react";
 import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
@@ -36,6 +39,17 @@ function displayBuildingName(campus: string, building: string) {
   const b = (building || "").trim();
   if (c === "nd" && b === "NDPD") return "Hammes Mowbray Hall (NDPD)";
   return b;
+}
+
+// Flag items older than 72h or marked high-value
+function isAgingItem(item: Item): boolean {
+  const ts = (item as any).created_at || (item as any).date_found;
+  if (!ts) return false;
+  return Date.now() - new Date(ts).getTime() > 72 * 60 * 60 * 1000;
+}
+
+function isHighValueItem(item: Item): boolean {
+  return (item as any).is_high_value === true;
 }
 
 export default function ItemsList({ refreshTrigger, campus, building }: ItemsListProps) {
@@ -77,6 +91,9 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   const selectedCount = selectedIds.size;
 
   const [canExport, setCanExport] = useState(false);
+
+  // View mode
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   // Overflow menu for each row
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -549,16 +566,40 @@ useEffect(() => {
               )}
             </p>
           </div>
-          {canExport && (
-            <button
-              onClick={() => setShowExportModal(true)}
-              disabled={exporting}
-              className="ff-btn-primary inline-flex items-center gap-2 py-2 px-4 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
-              <span>{exporting ? "Exporting..." : "Export CSV"}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* View mode toggle */}
+            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === "list" ? "bg-slate-900 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                title="List view"
+              >
+                <List className="w-4 h-4" />
+                <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === "grid" ? "bg-slate-900 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                title="Grid view"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+            </div>
+
+            {canExport && (
+              <button
+                onClick={() => setShowExportModal(true)}
+                disabled={exporting}
+                className="ff-btn-primary inline-flex items-center gap-2 py-2 px-4 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                <span>{exporting ? "Exporting..." : "Export CSV"}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="relative">
@@ -603,16 +644,116 @@ useEffect(() => {
         </div>
       ) : (
         <>
-          {/* List */}
+          {/* ── Grid view ── */}
+          {viewMode === "grid" && (
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {items.map((item) => {
+                const isSensitive = (item as any).sensitive === true;
+                const aging = isAgingItem(item);
+                const highValue = isHighValueItem(item);
+                const needsAttention = aging || highValue;
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-xl border border-slate-200 overflow-hidden group"
+                    style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" }}
+                  >
+                    {/* Photo */}
+                    <button
+                      onClick={() => setDetailItem(item)}
+                      className="block w-full text-left"
+                    >
+                      <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100 relative">
+                        {isSensitive ? (
+                          <div className="w-full h-full bg-amber-50 flex items-center justify-center">
+                            <Package className="w-8 h-8 text-amber-400" />
+                          </div>
+                        ) : item.photo_url ? (
+                          <img
+                            src={item.photo_url}
+                            alt={item.description}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                            <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
+                              <ImageIcon className="w-5 h-5 text-slate-400" />
+                            </div>
+                          </div>
+                        )}
+                        {/* Status badge */}
+                        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold leading-tight ${item.status === "available" ? "bg-blue-500 text-white" : "bg-green-500 text-white"}`}>
+                          {item.status === "available" ? "Available" : "Claimed"}
+                        </span>
+                        {/* Amber flag */}
+                        {needsAttention && item.status === "available" && (
+                          <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center" title={aging ? "72h+" : "High value"}>
+                            <AlertTriangle className="w-3.5 h-3.5 text-white" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2.5">
+                        <p className="text-[15px] font-medium text-slate-900 leading-snug line-clamp-2 mb-1">
+                          {item.description}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                          <span className="text-[11px] text-slate-500 truncate">{displayBuildingName(campus, item.building)}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{formatLoggedAt((item as any).logged_at)}</p>
+                      </div>
+                    </button>
+                    {/* Grid overflow menu */}
+                    <div className="px-2.5 pb-2.5 flex justify-end" ref={openMenuId === item.id ? menuRef : undefined}>
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-colors"
+                        >
+                          <MoreHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                        {openMenuId === item.id && (
+                          <div className="absolute right-0 bottom-full mb-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-44" style={{ boxShadow: "0 4px 16px 0 rgb(0 0 0 / 0.10)" }}>
+                            <button onClick={() => { setOpenMenuId(null); setDetailItem(item); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left">
+                              <Eye className="w-4 h-4 text-slate-400" /> View details
+                            </button>
+                            <button onClick={() => { setOpenMenuId(null); openMoveModal(item); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 text-left">
+                              <MoveRight className="w-4 h-4 text-slate-400" /> Transfer
+                            </button>
+                            {item.status === "available" && (
+                              <button onClick={() => { setOpenMenuId(null); openClaimModal(item); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-green-700 hover:bg-green-50 text-left">
+                                <CheckCircle className="w-4 h-4 text-green-500" /> Mark as Claimed
+                              </button>
+                            )}
+                            <div className="my-1 border-t border-slate-100" />
+                            <button onClick={() => { setOpenMenuId(null); handleDelete(item.id); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 text-left">
+                              <Trash2 className="w-4 h-4" /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── List view ── */}
+          {viewMode === "list" && (
           <div className="divide-y divide-slate-200">
             {items.map((item) => {
               const isSensitive = (item as any).sensitive === true;
               const isChecked = selectedIds.has(item.id);
+              const aging = isAgingItem(item);
+              const highValue = isHighValueItem(item);
+              const needsAttention = aging || highValue;
 
               return (
                 <div
                   key={item.id}
-                  className="relative px-6 py-5 hover:bg-slate-50 transition-colors"
+                  className={`relative px-6 py-5 hover:bg-slate-50 transition-colors ${needsAttention ? "border-l-4 border-l-amber-400" : ""}`}
                 >
                   {/* checkbox */}
                   <label className="absolute left-4 top-4 z-10 inline-flex items-center">
@@ -668,6 +809,18 @@ useEffect(() => {
                               {item.category}
                             </span>
 
+                            {aging && item.status === "available" && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-xs font-semibold">
+                                <AlertTriangle className="w-3 h-3" />
+                                72h+
+                              </span>
+                            )}
+                            {highValue && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-xs font-semibold">
+                                <AlertTriangle className="w-3 h-3" />
+                                High value
+                              </span>
+                            )}
                             {isSensitive && (
                               <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-semibold">
                                 Sensitive (photo hidden)
@@ -700,8 +853,17 @@ useEffect(() => {
                                 className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors text-left"
                               >
                                 <MoveRight className="w-4 h-4 text-slate-400" />
-                                Transfer item
+                                Transfer
                               </button>
+                              {item.status === "available" && (
+                                <button
+                                  onClick={() => { setOpenMenuId(null); openClaimModal(item); }}
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-green-700 hover:bg-green-50 transition-colors text-left"
+                                >
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                  Mark as Claimed
+                                </button>
+                              )}
                               <div className="my-1 border-t border-slate-100" />
                               <button
                                 onClick={() => { setOpenMenuId(null); handleDelete(item.id); }}
@@ -742,6 +904,7 @@ useEffect(() => {
               );
             })}
           </div>
+          )}
 
           {hasMore && (
             <div className="p-6 text-center border-t border-slate-200">

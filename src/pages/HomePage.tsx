@@ -100,17 +100,16 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: staff context + sign out */}
-          <div className="flex items-center gap-1">
-            {/* Staff: show back-to-dashboard link */}
+          {/* Right: preview mode pill + sign out */}
+          <div className="flex items-center gap-2">
             {isStaff && (
               <button
                 onClick={() => navigate(`/admin/${campus}`)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
                 title="Back to admin dashboard"
               >
-                <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden sm:inline">Dashboard</span>
+                <LayoutDashboard className="w-3 h-3" />
+                Preview mode
               </button>
             )}
 
@@ -124,27 +123,6 @@ export default function HomePage() {
             </button>
           </div>
         </div>
-
-        {/* Staff context bar */}
-        {isStaff && (
-          <div className="border-t border-slate-100 bg-blue-50/60">
-            <div className="max-w-5xl mx-auto px-4 py-1.5 flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide">
-                Staff view
-              </span>
-              <span className="text-[11px] text-blue-500">·</span>
-              <span className="text-[11px] text-blue-500">
-                Viewing as {profile?.role === "campus_admin" ? "campus admin" : "building manager"}
-              </span>
-              <button
-                onClick={() => navigate(`/admin/${campus}`)}
-                className="ml-auto text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                ← Back to dashboard
-              </button>
-            </div>
-          </div>
-        )}
       </nav>
 
       {!selectedItem && <SearchPage campus={campus} campusName={campusName} onViewItem={setSelectedItem} />}

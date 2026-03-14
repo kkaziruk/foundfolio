@@ -304,7 +304,7 @@ export default function AdminPage() {
           <div className="mb-4 bg-white rounded-xl border border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              <span className="text-sm font-medium text-slate-600">Building</span>
+              <span className="text-sm font-semibold text-slate-700">Viewing:</span>
             </div>
 
             <select
