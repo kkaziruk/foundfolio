@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { Trash2 } from "lucide-react";
+import { Trash2, UserPlus, Mail } from "lucide-react";
 
 type Building = { id: string; name: string };
 type Invite = {
@@ -16,8 +16,9 @@ export default function ManageStaff({ campus, buildings }: { campus: string; bui
   const [invites, setInvites] = useState<Invite[]>([]);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Invite["role"]>("building_manager");
-  const [buildingId, setBuildingId] = useState<string | "">(buildings[0]?.id ?? "");
+  const [buildingId, setBuildingId] = useState<string>(buildings[0]?.id ?? "");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
 
   const buildingNameById = useMemo(() => {
@@ -48,58 +49,63 @@ export default function ManageStaff({ campus, buildings }: { campus: string; bui
 
   useEffect(() => {
     loadInvites();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campus]);
 
   const addInvite = async () => {
-  setError("");
-  const cleanEmail = email.trim().toLowerCase();
-  if (!cleanEmail) return;
+    setError("");
+    setSuccess("");
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return;
 
-  if (role === "building_manager" && !buildingId) {
-    setError("Select a building for building managers.");
-    return;
-  }
+    if (role === "building_manager" && !buildingId) {
+      setError("Select a building for building managers.");
+      return;
+    }
 
-  setSaving(true);
-  try {
-    const payload = {
-      campus_slug: campus,
-      email: cleanEmail,
-      role,
-      building_id: role === "building_manager" ? buildingId : null,
-    };
+    setSaving(true);
+    try {
+      const payload = {
+        campus_slug: campus,
+        email: cleanEmail,
+        role,
+        building_id: role === "building_manager" ? buildingId : null,
+      };
 
-    // 1️⃣ Insert into staff_invites
-    const { error: insertErr } = await supabase.from("staff_invites").insert(payload);
-    if (insertErr) throw insertErr;
+      const { error: insertErr } = await supabase.from("staff_invites").insert(payload);
+      if (insertErr) throw insertErr;
 
-    // 2️⃣ Send Auth invite email (Edge Function)
-const { data, error: fnErr } = await supabase.functions.invoke(
-  "invite-staff",
-  {
-    body: { email: cleanEmail, campus_slug: campus },
-  }
-);
+      let emailSent = false;
+      try {
+        const { error: fnErr } = await supabase.functions.invoke("invite-staff", {
+          body: { email: cleanEmail, campus_slug: campus },
+        });
+        if (fnErr) {
+          console.warn("Invite email failed (invite record still saved):", fnErr.message);
+        } else {
+          emailSent = true;
+        }
+      } catch (fnEx) {
+        console.warn("Invite email error:", fnEx);
+      }
 
-if (fnErr) {
-  console.error("Invite staff function error:", fnErr);
-  throw new Error(fnErr.message);
-}
+      setEmail("");
+      setSuccess(
+        emailSent
+          ? `Invite sent to ${cleanEmail}.`
+          : `${cleanEmail} added. Email invite could not be sent — they can still sign in once approved.`
+      );
+      await loadInvites();
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.message ?? "Failed to add invite.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-console.log("Invite staff success:", data);
-
-    setEmail("");
-    await loadInvites();
-  } catch (e: any) {
-    console.error(e);
-    setError(e?.message ?? "Failed to add invite.");
-  } finally {
-    setSaving(false);
-  }
-};
   const removeInvite = async (id: string) => {
     setError("");
+    setSuccess("");
     try {
       const { error } = await supabase.from("staff_invites").delete().eq("id", id);
       if (error) throw error;
@@ -110,31 +116,51 @@ console.log("Invite staff success:", data);
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addInvite();
+    }
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
-      <h2 className="text-lg font-semibold text-slate-900 mb-4">Manage Staff Access</h2>
-      <p className="text-sm text-slate-600 mb-6">
-        Staff can only sign in if their email is pre-approved here.
+    <div className="rounded-2xl border border-slate-200 bg-white p-6" style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.05)" }}>
+      <div className="flex items-center gap-3 mb-1">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+          <UserPlus className="w-4 h-4 text-slate-700" />
+        </span>
+        <h2 className="text-lg font-extrabold text-slate-900">Manage Staff Access</h2>
+      </div>
+      <p className="text-sm text-slate-500 mb-6 ml-12">
+        Staff can only sign in if their email is pre-approved here. Adding an email sends them an invite link.
       </p>
 
       {error && (
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
+      {success && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <Mail className="w-4 h-4 flex-shrink-0" />
+          {success}
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto_auto] mb-6">
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={handleKeyDown}
+          type="email"
           placeholder="staff@nd.edu"
-          className="md:col-span-2 px-3 py-2 border border-slate-300 rounded-lg"
+          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
         />
 
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as Invite["role"])}
-          className="px-3 py-2 border border-slate-300 rounded-lg"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
         >
           <option value="building_manager">Building Manager</option>
           <option value="campus_admin">Campus Admin</option>
@@ -144,7 +170,7 @@ console.log("Invite staff success:", data);
           value={buildingId}
           onChange={(e) => setBuildingId(e.target.value)}
           disabled={role === "campus_admin"}
-          className="px-3 py-2 border border-slate-300 rounded-lg disabled:opacity-60"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {buildings.map((b) => (
             <option key={b.id} value={b.id}>
@@ -155,37 +181,37 @@ console.log("Invite staff success:", data);
 
         <button
           onClick={addInvite}
-          disabled={saving}
-          className="px-4 py-2 bg-[#3B82F6] text-white rounded-lg hover:bg-[#2563EB] font-medium disabled:opacity-60"
+          disabled={saving || !email.trim()}
+          className="ff-btn-primary px-5 py-2.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? "Adding…" : "Add"}
+          {saving ? "Adding..." : "Add"}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-slate-600">Loading invites…</div>
+        <div className="py-6 text-center text-sm text-slate-500">Loading invites...</div>
       ) : invites.length === 0 ? (
-        <div className="text-slate-600">No staff invites yet.</div>
+        <div className="py-8 text-center text-sm text-slate-400">No staff invites yet. Add one above.</div>
       ) : (
-        <div className="divide-y divide-slate-200">
+        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
           {invites.map((inv) => (
-            <div key={inv.id} className="py-3 flex items-center justify-between">
+            <div key={inv.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
               <div>
-                <div className="font-medium text-slate-900">{inv.email}</div>
-                <div className="text-sm text-slate-600">
+                <div className="font-medium text-slate-900 text-sm">{inv.email}</div>
+                <div className="text-xs text-slate-500 mt-0.5">
                   {inv.role === "campus_admin"
                     ? "Campus Admin"
-                    : `Building Manager • ${buildingNameById.get(inv.building_id ?? "") ?? "Unknown building"}`}
+                    : `Building Manager · ${buildingNameById.get(inv.building_id ?? "") ?? "Unknown building"}`}
                 </div>
               </div>
 
               <button
                 onClick={() => removeInvite(inv.id)}
-                className="p-2 rounded-lg hover:bg-slate-100"
+                className="ml-4 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                 aria-label="Remove invite"
                 title="Remove invite"
               >
-                <Trash2 className="w-4 h-4 text-slate-600" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           ))}
