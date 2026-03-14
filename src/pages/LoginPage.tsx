@@ -28,7 +28,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/app`,
         queryParams: {
           prompt: "select_account",
           hd: "nd.edu", // hint only (not enforcement)
