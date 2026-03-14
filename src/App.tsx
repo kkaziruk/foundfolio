@@ -29,8 +29,9 @@ function App() {
         {/* decides where a logged-in user belongs */}
         <Route path="/app" element={<PostLoginRouter />} />
 
-        {/* dynamic campus routes */}
+        {/* dynamic campus routes — both /nd and /search/nd work */}
         <Route path="/:campus" element={<HomePage />} />
+        <Route path="/search/:campus" element={<HomePage />} />
         <Route path="/admin/:campus" element={<AdminPage />} />
 
         <Route path="/not-onboarded" element={<NotOnboardedPage />} />

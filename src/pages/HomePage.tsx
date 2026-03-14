@@ -147,7 +147,7 @@ export default function HomePage() {
         )}
       </nav>
 
-      {!selectedItem && <SearchPage campus={campus} onViewItem={setSelectedItem} />}
+      {!selectedItem && <SearchPage campus={campus} campusName={campusName} onViewItem={setSelectedItem} />}
       {selectedItem && <ItemDetail item={selectedItem} onBack={() => setSelectedItem(null)} />}
     </div>
   );

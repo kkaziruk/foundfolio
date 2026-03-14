@@ -7,6 +7,9 @@ import {
   BarChart3,
   LogOut,
   User,
+  Link2,
+  Copy,
+  Check,
 } from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
@@ -42,6 +45,7 @@ export default function AdminPage() {
 
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
   const [campusName, setCampusName] = useState<string>("");
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -397,10 +401,68 @@ export default function AdminPage() {
               </div>
 
               {adminView === "analytics" && (
-                <AdminDashboard
-                  campus={campus}
-                  building={selectedBuildingNameForProps}
-                />
+                <>
+                  <AdminDashboard
+                    campus={campus}
+                    building={selectedBuildingNameForProps}
+                  />
+
+                  {/* Shareable student URL + QR code */}
+                  {(() => {
+                    const shareUrl = `${window.location.origin}/search/${campus}`;
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=0f172a&margin=2`;
+                    return (
+                      <div className="bg-white rounded-xl border border-slate-200 p-5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                            <Link2 className="w-3.5 h-3.5 text-blue-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">Student search page</p>
+                            <p className="text-xs text-slate-500">Share this URL or QR code so students can search for lost items</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 items-start">
+                          {/* URL + copy */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200 px-3 py-2">
+                              <span className="text-xs text-slate-600 font-mono truncate flex-1">{shareUrl}</span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(shareUrl).then(() => {
+                                    setCopiedLink(true);
+                                    setTimeout(() => setCopiedLink(false), 2000);
+                                  });
+                                }}
+                                className="flex items-center gap-1.5 flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                              >
+                                {copiedLink ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copiedLink ? "Copied!" : "Copy"}
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-2">
+                              Post this link on your campus website, email signature, or bulletin boards.
+                            </p>
+                          </div>
+
+                          {/* QR code */}
+                          <div className="flex-shrink-0">
+                            <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
+                              <img
+                                src={qrUrl}
+                                alt={`QR code for ${shareUrl}`}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                            <p className="text-[10px] text-slate-400 text-center mt-1">Scan to open</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
 
               {adminView === "buildings" && (

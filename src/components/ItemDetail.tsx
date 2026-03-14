@@ -1,4 +1,5 @@
-import { ArrowLeft, MapPin, Tag, Calendar, CheckCircle, ArrowRight, Circle } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, MapPin, Tag, Calendar, CheckCircle, ArrowRight, Circle, X, Copy, Check } from "lucide-react";
 import { Item } from "../lib/supabase";
 
 interface ItemDetailProps {
@@ -28,6 +29,16 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
   const dateLabel = daysAgo(item.date_found as string | null | undefined);
   const dateFormatted = formatDate(item.date_found as string | null | undefined);
   const isClaimed = item.status === "claimed" || item.status === "picked_up";
+
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -128,7 +139,7 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               )}
             </div>
 
-            {/* Where to go — claim CTA */}
+            {/* Where to claim */}
             {!isClaimed && (
               <div className="mt-6 rounded-xl bg-blue-50 border border-blue-100 p-4">
                 <div className="flex items-start gap-3">
@@ -137,12 +148,15 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-blue-900 mb-0.5">
-                      Where to go
+                      Where to claim
                     </p>
                     <p className="text-sm font-semibold text-blue-800 mb-1">
                       {item.building} — Lost &amp; Found desk
                     </p>
-                    <div className="space-y-1.5 mt-3">
+                    <p className="text-xs text-blue-600 mb-3">
+                      Mon–Fri 8am–5pm · Sat 10am–2pm
+                    </p>
+                    <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
                         <span className="text-xs text-blue-700">Bring your student ID or NetID</span>
@@ -159,6 +173,16 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* "This looks like mine" CTA */}
+            {!isClaimed && (
+              <button
+                onClick={() => setShowClaimModal(true)}
+                className="mt-4 w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold transition-colors"
+              >
+                This looks like mine →
+              </button>
             )}
 
             {isClaimed && (
@@ -188,7 +212,84 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
         </div>
       </div>
 
-      {/* Additional Notes intentionally hidden from student view (sensitive). */}
+      {/* "This looks like mine" modal */}
+      {showClaimModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowClaimModal(false); }}
+        >
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Ready to claim this?</h2>
+                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.description}</p>
+              </div>
+              <button
+                onClick={() => setShowClaimModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="px-5 py-5 space-y-4">
+              {/* Where to go */}
+              <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
+                <p className="text-sm font-bold text-blue-900 mb-1">Head to the lost &amp; found desk</p>
+                <p className="text-sm font-semibold text-blue-800">{item.building}</p>
+                <p className="text-xs text-blue-600 mt-0.5">Mon–Fri 8am–5pm · Sat 10am–2pm</p>
+              </div>
+
+              {/* What to bring */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">What to bring</p>
+                <div className="space-y-1.5">
+                  {[
+                    "Student ID or NetID",
+                    "A description of the item — color, brand, any unique marks",
+                    "Any proof of ownership if available",
+                  ].map((tip) => (
+                    <div key={tip} className="flex items-start gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs text-slate-600">{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Copy link */}
+              <button
+                onClick={handleCopyLink}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-medium text-slate-700 transition-colors"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 text-green-500" />
+                    Link copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy link to this item
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => setShowClaimModal(false)}
+                className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold transition-colors"
+              >
+                Got it — I'll head over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

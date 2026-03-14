@@ -5,6 +5,7 @@ import { supabase, Item } from "../lib/supabase";
 
 interface SearchPageProps {
   campus: string;
+  campusName?: string;
   onViewItem: (item: Item) => void;
 }
 
@@ -68,7 +69,7 @@ function relativeDate(dateStr: string | null | undefined): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
+export default function SearchPage({ campus, campusName, onViewItem }: SearchPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
@@ -212,6 +213,11 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
       {/* ── Hero search section ── */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-2xl mx-auto px-4 pt-8 pb-6">
+          {campusName && (
+            <p className="text-xs font-semibold text-blue-500 uppercase tracking-widest text-center mb-2">
+              {campusName}
+            </p>
+          )}
           <h1
             className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1 text-center"
             style={{ fontFamily: "Poppins, system-ui, sans-serif" }}
@@ -219,7 +225,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
             Lost something?
           </h1>
           <p className="text-sm text-slate-500 text-center mb-6">
-            Search items found across campus
+            Search items found and turned in across campus
           </p>
 
           <form onSubmit={handleSearch} autoComplete="off">
@@ -296,6 +302,17 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                 )}
               </div>
             </div>
+
+            {/* Result count — always visible after a search */}
+            {hasSearched && !isSearching && (
+              <p className="mt-2 text-xs text-slate-500">
+                {results.length === 0
+                  ? searchTerm.trim() === ""
+                    ? "Enter a description to search"
+                    : "No items matched your search"
+                  : `${results.length} item${results.length !== 1 ? "s" : ""} found`}
+              </p>
+            )}
 
             {/* Filter panel */}
             {showFilters && (
@@ -382,7 +399,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                 </div>
                 <p className="text-base font-semibold text-slate-700">No items found</p>
                 <p className="text-sm text-slate-400 mt-1 max-w-sm">
-                  No match for <span className="font-medium text-slate-600">"{searchTerm}"</span>. Try different keywords or check back — new items are logged daily.
+                  No match for <span className="font-medium text-slate-600">"{searchTerm}"</span>. Try different keywords or broader terms.
                 </p>
                 <button
                   onClick={() => { setSearchTerm(""); setHasSearched(false); inputRef.current?.focus(); }}
@@ -390,6 +407,9 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                 >
                   Clear search
                 </button>
+                <p className="text-xs text-slate-400 mt-4 max-w-xs">
+                  Not seeing your item? New items are logged daily — check back soon or visit the lost &amp; found desk directly.
+                </p>
               </>
             )}
           </div>
@@ -398,10 +418,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
         {/* Results grid */}
         {!isSearching && results.length > 0 && (
           <>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-              {results.length} result{results.length !== 1 ? "s" : ""}
-            </p>
-
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {results.map((item) => {
                 const dateStr = relativeDate(item.date_found as string | null | undefined);
@@ -437,7 +453,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                     </div>
 
                     <div className="p-2.5">
-                      <p className="text-[13px] font-semibold text-slate-900 leading-snug line-clamp-2 mb-1.5">
+                      <p className="text-[15px] font-medium text-slate-900 leading-snug line-clamp-2 mb-1.5">
                         {item.description}
                       </p>
                       <div className="flex items-center gap-1 mb-0.5">
@@ -451,6 +467,13 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                   </button>
                 );
               })}
+            </div>
+            {/* Not seeing your item — shown when results are sparse or any search */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-slate-400">
+                Not seeing your item?{" "}
+                <span className="text-slate-500">New items are logged daily — check back soon or visit the lost &amp; found desk directly.</span>
+              </p>
             </div>
           </>
         )}
@@ -496,7 +519,7 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
                           )}
                         </div>
                         <div className="p-2.5">
-                          <p className="text-[13px] font-semibold text-slate-900 leading-snug line-clamp-2 mb-1">
+                          <p className="text-[15px] font-medium text-slate-900 leading-snug line-clamp-2 mb-1">
                             {item.description}
                           </p>
                           <div className="flex items-center gap-1">
@@ -535,25 +558,6 @@ export default function SearchPage({ campus, onViewItem }: SearchPageProps) {
               </div>
             </div>
 
-            {/* Search tip */}
-            <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-start gap-3">
-              <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Search className="w-3.5 h-3.5 text-slate-500" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-700 mb-0.5">Search tip</p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Be specific — include color, brand, or distinguishing features. Try{" "}
-                  <button
-                    onClick={() => handleQuickChip("black water bottle")}
-                    className="text-blue-500 hover:text-blue-700 font-medium transition-colors"
-                  >
-                    "black water bottle"
-                  </button>{" "}
-                  instead of just "bottle".
-                </p>
-              </div>
-            </div>
           </div>
         )}
       </div>
