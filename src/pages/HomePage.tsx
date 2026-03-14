@@ -15,12 +15,11 @@ export default function HomePage() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [campusName, setCampusName] = useState<string>("");
 
-  // Fetch campus name from database
   useEffect(() => {
     if (!campus) return;
 
     let cancelled = false;
-    setCampusName(campus.toUpperCase()); // default immediately
+    setCampusName(campus.toUpperCase());
 
     const loadCampus = async () => {
       try {
@@ -43,36 +42,15 @@ export default function HomePage() {
     };
 
     loadCampus();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [campus]);
 
   useEffect(() => {
     if (loading) return;
-
-    if (!user) {
-      navigate("/login", { replace: true });
-      return;
-    }
-
-    if (!profile?.campus_slug) {
-      navigate("/not-onboarded", { replace: true });
-      return;
-    }
-
-    // If campus param missing, go to the user's campus
-    if (!campus) {
-      navigate(`/${profile.campus_slug}`, { replace: true });
-      return;
-    }
-
-    // Enforce campus membership
-    if (profile.campus_slug !== campus) {
-      navigate(`/${profile.campus_slug}`, { replace: true });
-      return;
-    }
+    if (!user) { navigate("/login", { replace: true }); return; }
+    if (!profile?.campus_slug) { navigate("/not-onboarded", { replace: true }); return; }
+    if (!campus) { navigate(`/${profile.campus_slug}`, { replace: true }); return; }
+    if (profile.campus_slug !== campus) { navigate(`/${profile.campus_slug}`, { replace: true }); return; }
   }, [loading, user, profile?.campus_slug, campus, navigate]);
 
   const handleSignOut = async () => {
@@ -81,41 +59,51 @@ export default function HomePage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex items-center gap-2 text-slate-500 text-sm">
+          <div className="w-4 h-4 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+          Loading…
+        </div>
+      </div>
+    );
   }
 
   if (!user || !profile?.campus_slug || profile.campus_slug !== campus) {
-    return <div className="min-h-screen flex items-center justify-center">Redirecting…</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-slate-500 text-sm">Redirecting…</div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img
-                src="/found_folio_(6).png"
-                alt="Found Folio Logo"
-                className="w-12 h-12 object-contain"
-              />
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">Lost & Found</h1>
-                <p className="text-sm text-slate-600">{campusName}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleSignOut}
-                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
+      {/* Nav */}
+      <nav className="sticky top-0 z-30 bg-white border-b border-slate-200" style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.04)" }}>
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/found_folio_(6).png"
+              alt="FoundFolio"
+              className="w-8 h-8 object-contain"
+            />
+            <div className="leading-none">
+              <span className="text-sm font-semibold text-slate-900">FoundFolio</span>
+              {campusName && (
+                <span className="text-xs text-slate-500 ml-1.5 font-normal">{campusName}</span>
+              )}
             </div>
           </div>
+
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium"
+            aria-label="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
         </div>
       </nav>
 

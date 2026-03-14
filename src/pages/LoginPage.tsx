@@ -67,30 +67,31 @@ export default function LoginPage() {
 
         {/* Card (hero) */}
         <div className="mx-auto w-full max-w-xl">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-7">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-7" style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.06)" }}>
             {error && (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+              <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
                 {error}
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {/* Student */}
               <button
                 onClick={logInStudent}
                 disabled={authLoading}
-                className="w-full text-left rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition p-4 disabled:opacity-60"
+                className="w-full text-left rounded-xl border border-slate-200 hover:border-blue-200 hover:bg-blue-50/40 transition-all p-4 group disabled:opacity-60"
               >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 h-9 w-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
-                    <GraduationCap className="w-[18px] h-[18px] text-slate-700" />
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="w-5 h-5 text-blue-500" />
                   </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-slate-900">Student</div>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Search everything found across campus.
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-900 text-sm">Student</div>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Search everything found across campus
                     </p>
                   </div>
+                  <span className="text-slate-300 group-hover:text-slate-400 transition-colors text-lg">→</span>
                 </div>
               </button>
 
@@ -98,32 +99,33 @@ export default function LoginPage() {
               <button
                 onClick={goStaff}
                 disabled={authLoading}
-                className="w-full text-left rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition p-4 disabled:opacity-60"
+                className="w-full text-left rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all p-4 group disabled:opacity-60"
               >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 h-9 w-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
-                    <Building2 className="w-[18px] h-[18px] text-slate-700" />
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 text-slate-600" />
                   </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-slate-900">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-900 text-sm">
                       Building Manager / Admin
                     </div>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Log items, manage returns, and route high-value items securely.
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Log items, manage returns, and view analytics
                     </p>
                   </div>
+                  <span className="text-slate-300 group-hover:text-slate-400 transition-colors text-lg">→</span>
                 </div>
               </button>
             </div>
 
-            <p className="mt-5 text-xs text-slate-500 text-center">
-              Secure log in. Campus access only.
+            <p className="mt-5 text-xs text-slate-400 text-center">
+              Secure sign in · Campus access only
             </p>
 
-            <div className="mt-5 text-center">
+            <div className="mt-4 text-center">
               <Link
                 to="/"
-                className="text-sm text-slate-600 hover:text-slate-900 underline"
+                className="text-sm text-slate-400 hover:text-slate-700 transition-colors"
               >
                 ← Back to home
               </Link>

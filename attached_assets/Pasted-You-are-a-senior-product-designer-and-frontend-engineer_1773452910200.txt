@@ -1,0 +1,480 @@
+You are a senior product designer and frontend engineer working inside an existing codebase for FoundFolio, a campus lost-and-found platform.
+
+Your job is to improve the UI and UX only.
+
+Critical context
+
+The logic, internals, routing, and core workflows are already working. Do not rebuild the product, change core business logic, or introduce unnecessary new features. Your task is to make the app feel like a real, polished, production-quality product rather than a basic student-built internal tool.
+
+This app has two main usage contexts:
+
+1. Students on mobile
+
+Students are typically on phones. Their experience should feel:
+
+fast
+
+visual
+
+seamless
+
+intuitive
+
+lightweight
+
+modern
+
+2. Admins / Building Managers on laptop
+
+Admins and building managers are typically on laptops. Their experience should feel:
+
+efficient
+
+clear
+
+operational
+
+trustworthy
+
+high-signal
+
+easy to scan and act in
+
+The standard to aim for
+
+The UI must feel:
+
+real
+
+slick
+
+usable
+
+polished
+
+intentional
+
+cohesive
+
+premium but restrained
+
+It should not feel like:
+
+default Tailwind/shadcn components pasted together
+
+a hackathon MVP
+
+a generic admin template
+
+a flashy marketing site
+
+a Dribbble concept
+
+an overdesigned startup landing page
+
+Think:
+
+modern product software
+
+premium utility interface
+
+calm operational clarity
+
+strong hierarchy
+
+excellent spacing
+
+polished interactions
+
+reliable and trustworthy visual design
+
+Non-negotiable constraints
+
+Preserve all working logic.
+
+Do not break Supabase integration.
+
+Do not change routing behavior unless required for UI cleanup.
+
+Do not invent unnecessary backend work.
+
+Do not do a complete rewrite if refinement and refactoring can achieve the goal.
+
+Do not use gimmicky design styles.
+
+Keep the result maintainable and idiomatic to the existing stack.
+
+First: inspect before changing anything
+
+Before writing code, inspect the existing codebase and build a clear mental model of:
+
+the tech stack
+
+global styling approach
+
+shared UI components
+
+page structure
+
+where student/mobile views live
+
+where admin/laptop views live
+
+current design tokens or lack thereof
+
+current spacing, typography, color, and shadow patterns
+
+the key files for:
+
+student search/home/results
+
+item cards / item detail
+
+admin dashboard
+
+inventory list/table
+
+log item form
+
+shared buttons / inputs / cards / layout wrappers
+
+Then briefly summarize the current structure and identify the biggest UI weaknesses.
+
+Core design goal
+
+Refine FoundFolio into a calm, premium utility product.
+
+Use a design direction that feels like:
+
+modern software
+
+polished operational tooling
+
+crisp and product-led
+
+mobile-friendly for students
+
+laptop-efficient for staff
+
+This is a product UX refinement pass, not a visual experiment.
+
+Main UI problems to solve
+
+Right now the app feels too basic. Specifically:
+
+it feels too close to default component-library styling
+
+visual hierarchy is weak
+
+the search experience does not feel important enough
+
+cards feel generic and slightly flat
+
+dashboard panels are serviceable but not polished
+
+lists/tables are usable but not easy enough to scan
+
+forms are functional but visually long and under-structured
+
+mobile and desktop experiences do not feel intentionally differentiated
+
+buttons, spacing, and states do not yet feel product-grade
+
+What “good” should mean here
+
+The result should feel:
+
+smooth
+
+modern
+
+frictionless
+
+visually confident
+
+clean without being boring
+
+simple without feeling unfinished
+
+polished enough that a user would assume this is a serious deployed product
+
+Every screen should feel like someone made deliberate decisions about:
+
+spacing
+
+hierarchy
+
+density
+
+alignment
+
+states
+
+typography
+
+actions
+
+responsiveness
+
+Design direction
+
+Use a light-theme-first modern product system with:
+
+highly legible sans-serif typography
+
+soft neutral background
+
+white or lightly elevated surfaces
+
+restrained blue or indigo accent
+
+near-black text
+
+muted gray metadata
+
+moderate border radii
+
+subtle shadows and borders
+
+clean interaction states
+
+polished empty/loading/no-results states
+
+Avoid:
+
+excessive gradients
+
+dark-mode hero aesthetics
+
+noisy visuals
+
+huge glow effects
+
+unnecessary animation
+
+decorative design that hurts clarity
+
+Student mobile UI priorities
+
+For student-facing mobile views:
+
+search should feel like the hero interaction
+
+the first screen should feel inviting and clear
+
+item cards should feel visual and easy to browse
+
+spacing should be thumb-friendly
+
+cards should have stronger image hierarchy
+
+titles and metadata should be easier to scan
+
+overall layout should feel more intentional and less like desktop UI squeezed into mobile
+
+Admin / building manager laptop priorities
+
+For admin and building manager views:
+
+dashboard hierarchy should be clearer
+
+metric cards should feel more meaningful and polished
+
+sections should be easier to distinguish
+
+inventory rows should be easier to scan quickly
+
+action controls should be clearer and more consistent
+
+forms should be better grouped and visually structured
+
+the interface should support fast operational work without clutter
+
+Specific implementation goals
+1. Establish or refine a shared visual system
+
+Centralize or improve:
+
+color tokens
+
+typography hierarchy
+
+spacing scale
+
+radii
+
+shadows
+
+borders
+
+muted text treatment
+
+interactive states
+
+2. Make the UI feel more premium and real
+
+This means:
+
+stronger spacing rhythm
+
+clearer surface hierarchy
+
+better alignment
+
+more polished cards
+
+more intentional section structure
+
+better rhythm between headings, body text, controls, and content
+
+less “basic form app” feeling
+
+3. Upgrade search and discovery UI
+
+Especially on student views:
+
+make search more prominent
+
+improve visual structure around search/results
+
+refine filters if present
+
+improve result spacing and card presentation
+
+4. Upgrade cards and panels
+
+improve image-to-text ratio where relevant
+
+improve card padding
+
+improve title/metadata hierarchy
+
+make hover/tap states feel polished
+
+ensure cards feel like product surfaces, not default boxes
+
+5. Upgrade admin dashboard and stats panels
+
+improve section hierarchy
+
+improve metric card styling
+
+improve spacing and composition
+
+make tables/panels feel cleaner and more product-grade
+
+6. Upgrade inventory rows and data display
+
+improve scanability
+
+improve grouping and spacing
+
+make primary information obvious
+
+keep actions discoverable but not visually noisy
+
+7. Upgrade forms
+
+Especially the log-item flow:
+
+better section grouping
+
+cleaner field hierarchy
+
+more intentional upload area
+
+improved spacing and alignment
+
+clearer primary action emphasis
+
+8. Upgrade buttons and inputs
+
+Create a more polished and cohesive control system:
+
+primary
+
+secondary
+
+ghost
+
+destructive if needed
+
+Ensure:
+
+consistent radius
+
+better padding
+
+better hover/focus/active states
+
+more refined visual balance
+
+accessibility preserved
+
+9. Improve responsive intent
+
+Do not just make pages “responsive.” Make them feel intentionally designed for:
+
+mobile student usage
+
+laptop operational usage
+
+Quality bar for implementation
+
+As you make changes, keep asking:
+
+Does this feel like a real product?
+
+Does this feel polished or merely functional?
+
+Does this feel slick without trying too hard?
+
+Is the hierarchy clearer?
+
+Is this easier to use?
+
+Does this feel more trustworthy?
+
+Does this feel like a product someone would actually deploy to a university?
+
+Implementation rules
+
+Reuse and improve existing components where possible.
+
+Prefer refactoring over rewriting.
+
+Avoid one-off styles.
+
+Keep code clean and maintainable.
+
+Match the existing folder structure and conventions.
+
+Do not add unnecessary dependencies.
+
+Keep motion subtle and purposeful.
+
+Working order
+
+Please proceed in this order:
+
+Inspect the existing codebase and identify the main UI files/components.
+
+Summarize the current UI structure and top improvement opportunities.
+
+Propose a concise implementation plan.
+
+Implement the UI improvements in code.
+
+Summarize:
+
+what changed
+
+what files were touched
+
+what still could be improved later
+
+Final instruction
+
+Do not stop at generic advice. Actually implement the UI refinement pass in code.
+
+The target outcome is that FoundFolio feels like a real, slick, usable, polished software product while keeping all existing logic intact.

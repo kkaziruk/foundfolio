@@ -262,166 +262,138 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img
-                src="/found_folio_(6).png"
-                alt="FoundFolio Logo"
-                className="w-12 h-12 object-contain"
-              />
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">
-                  {selectedBuildingId === ALL_BUILDINGS_ID
-                    ? "Admin"
-                    : selectedBuilding?.name ?? "Building"}
-                </h1>
-                <p className="text-sm text-slate-600">{campusName}</p>
-              </div>
+      {/* Nav */}
+      <nav className="sticky top-0 z-30 bg-white border-b border-slate-200" style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.04)" }}>
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/found_folio_(6).png"
+              alt="FoundFolio"
+              className="w-8 h-8 object-contain"
+            />
+            <div className="leading-none">
+              <span className="text-sm font-semibold text-slate-900">FoundFolio</span>
+              {campusName && (
+                <span className="text-xs text-slate-500 ml-1.5 font-normal">{campusName}</span>
+              )}
             </div>
+          </div>
 
-            <div className="flex gap-2">
-              {/* ✅ Home: returns to admin landing (All Buildings + Analytics) */}
-              <button
-                onClick={goAdminHome}
-                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
-                aria-label="Home"
-                title="Home"
-              >
-                <Home className="w-5 h-5" />
-              </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={goAdminHome}
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              aria-label="Home"
+              title="Home"
+            >
+              <Home className="w-4 h-4" />
+            </button>
 
-              {/* (Optional) Back to student search */}
-              <button
-                onClick={() => navigate(`/${campus}`)}
-                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
-                aria-label="Back to search"
-                title="Back to search"
-              >
-                <SearchIcon className="w-5 h-5" />
-              </button>
+            <button
+              onClick={() => navigate(`/${campus}`)}
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              aria-label="Student search"
+              title="Student search"
+            >
+              <SearchIcon className="w-4 h-4" />
+            </button>
 
-              <button
-                onClick={handleSignOut}
-                className="p-2 rounded-lg font-medium transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium ml-1"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Building filter (campus admin only) */}
         {!isBuildingManager && (
-          <div className="mb-3 bg-white rounded-xl shadow-md p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-slate-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-slate-700">
-                    Building
-                  </h3>
-                </div>
-              </div>
-
-              <select
-                value={selectedBuildingId}
-                onChange={(e) => setSelectedBuildingId(e.target.value)}
-                className="w-full sm:w-auto px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] font-medium text-[#374151]"
-              >
-                <option value={ALL_BUILDINGS_ID}>All Buildings</option>
-                {buildings.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+          <div className="mb-4 bg-white rounded-xl border border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <span className="text-sm font-medium text-slate-600">Building</span>
             </div>
+
+            <select
+              value={selectedBuildingId}
+              onChange={(e) => setSelectedBuildingId(e.target.value)}
+              className="ff-input text-sm w-full sm:w-auto sm:min-w-[200px]"
+              style={{ paddingTop: "0.4375rem", paddingBottom: "0.4375rem" }}
+            >
+              <option value={ALL_BUILDINGS_ID}>All Buildings</option>
+              {buildings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
-        {/* Hint: directly under dropdown (only when ALL selected) */}
+        {/* Hint */}
         {!isBuildingManager &&
           selectedBuildingId === ALL_BUILDINGS_ID &&
           showBuildingHint && (
-            <div className="mb-6 rounded-xl bg-slate-50 border border-slate-200 p-4 flex items-start gap-3">
-              <div className="w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center shrink-0">
-                <Building2 className="w-5 h-5 text-slate-700" />
+            <div className="mb-5 rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 flex items-start gap-3">
+              <Building2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0 text-sm text-blue-700">
+                Select a <span className="font-semibold">Building</span> above to view its inventory and export a CSV.
               </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="text-sm font-semibold text-slate-900">
-                    Inspect building inventory
-                  </div>
-
-                  <button
-                    onClick={dismissBuildingHint}
-                    className="text-slate-500 hover:text-slate-700 text-sm leading-none"
-                    aria-label="Dismiss"
-                    title="Dismiss"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="text-sm text-slate-600 mt-1">
-                  Use the{" "}
-                  <span className="font-medium text-slate-800">Building</span>{" "}
-                  dropdown above to drill into a location and export a CSV of
-                  all items.
-                </div>
-              </div>
+              <button
+                onClick={dismissBuildingHint}
+                className="text-blue-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                aria-label="Dismiss"
+              >
+                <span className="text-lg leading-none">×</span>
+              </button>
             </div>
           )}
 
-        <div className="space-y-8">
+        <div className="space-y-6">
           {showCampusAdminPanels ? (
             <>
               {/* Admin Tabs */}
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="bg-white rounded-xl border border-slate-200 p-1.5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   <button
                     onClick={() => setAdminView("analytics")}
-                    className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+                    className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                       adminView === "analytics"
-                        ? "bg-[#3B82F6] text-white"
-                        : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+                        ? "bg-blue-500 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <BarChart3 className="w-5 h-5 shrink-0" />
+                    <BarChart3 className="w-4 h-4 shrink-0" />
                     <span className="truncate">Analytics</span>
                   </button>
 
                   <button
                     onClick={() => setAdminView("buildings")}
-                    className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+                    className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                       adminView === "buildings"
-                        ? "bg-[#3B82F6] text-white"
-                        : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+                        ? "bg-blue-500 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <Building2 className="w-5 h-5 shrink-0" />
+                    <Building2 className="w-4 h-4 shrink-0" />
                     <span className="truncate">Buildings</span>
                   </button>
 
                   {isCampusAdmin && (
                     <button
                       onClick={() => setAdminView("staff")}
-                      className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 rounded-lg font-medium text-sm sm:text-base transition-colors ${
+                      className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                         adminView === "staff"
-                          ? "bg-[#3B82F6] text-white"
-                          : "bg-[#F9FAFB] text-[#374151] hover:bg-slate-200"
+                          ? "bg-blue-500 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <User className="w-5 h-5 shrink-0" />
+                      <User className="w-4 h-4 shrink-0" />
                       <span className="truncate">Staff</span>
                     </button>
                   )}
