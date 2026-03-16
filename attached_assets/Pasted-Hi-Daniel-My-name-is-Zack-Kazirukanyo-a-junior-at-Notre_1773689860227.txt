@@ -1,0 +1,36 @@
+Hi Daniel,
+
+My name is Zack Kazirukanyo, a junior at Notre Dame studying computer engineering and political science. I handle the technical development for FoundFolio and have been really looking forward to getting your perspective on our security posture. Ahead of our meeting, I thought it might be helpful to share a quick snapshot of the current architecture and some of the decisions we’ve made so far.
+
+Stack & Hosting
+FoundFolio is a React + Vite web application hosted on Vercel. The backend runs on Supabase, which provides PostgreSQL, authentication, object storage for item photos, and edge functions.
+Data and authentication are hosted on Supabase’s managed infrastructure (AWS us-east-1). Supabase maintains SOC 2 Type II certification.
+Access Control
+
+Rather than running a separate API server, we’ve pushed most authorization down to the database using PostgreSQL Row-Level Security. Policies are scoped by campus, building, and role.
+Authentication runs through Google OAuth via Supabase Auth. The goal there was simply to avoid managing credentials ourselves.
+Administrative access is controlled through an allowlisted staff invitation table. Removing a user from that table effectively removes elevated access even if they authenticate again through OAuth.
+
+Multi-Campus Design
+The schema is partitioned by campus and building. That keeps authorization boundaries explicit in the data model and lets us support additional campuses without major structural changes.
+
+Data Stored
+At the moment we store only operational lost-and-found data: item descriptions, timestamps, building/location information, and item photos. When a student submits a claim, we collect contact information (email/netid) to coordinate pickup.
+We’ve intentionally kept the data surface fairly narrow and do not store financial data, academic records, or other sensitive institutional data.
+Areas We’re Still Working On
+
+As the platform evolves, a few areas we’re actively working on include:
+
+expanding audit logging for administrative actions
+formalizing the staff offboarding and access revocation process
+improving monitoring around authentication and role transitions
+periodic RLS policy reviews as the schema evolves
+image lifecycle management so photos tied to closed or deleted items are cleaned up
+
+We’ve also given some thought to FERPA applicability. Our current understanding is that operational lost-and-found records likely do not constitute education records under FERPA, but we’d welcome guidance on how the university classifies them.
+
+I look forward to meeting whenever it’s convenient for you.
+
+Gratefully,
+Zack
+
