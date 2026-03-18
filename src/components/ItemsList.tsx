@@ -267,14 +267,17 @@ useEffect(() => {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this item?")) return;
     const { error } = await supabase.from("items").delete().eq("id", id);
-    if (!error) {
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+    if (error) {
+      console.error("Delete error:", error);
+      alert(`Failed to delete item: ${error.message}`);
+      return;
     }
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   const handleBulkDelete = async () => {
