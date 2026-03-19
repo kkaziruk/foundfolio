@@ -1,0 +1,263 @@
+I want to add a new student-side FoundFolio feature from scratch. Build/spec it as an MVP that is operationally useful, AI-assisted, staff-controlled, and resistant to abuse.
+
+FEATURE NAME
+“Report a Found Item”
+
+CORE PURPOSE
+Right now FoundFolio mainly works when staff manually log items. I want to add a student-side intake layer so that if a student finds a lost item somewhere on campus, they can quickly report it with a photo and location/building. That report should notify the correct staff so they can retrieve the item and, if appropriate, turn it into a real lost-and-found listing.
+
+This should NOT let students publish live public listings themselves. Students can report. Staff approves and converts.
+
+PRODUCT LOGIC
+
+1. STUDENT ENTRY POINT
+Add a clear student-facing entry point somewhere appropriate in the student UI, such as:
+- “Found something?”
+- “Report a found item”
+
+This should be easy to access on mobile.
+
+2. BUILDING SELECTION
+Students should only be able to report found items for buildings that already exist in the database and are actively supported by FoundFolio.
+This means:
+- no free-text building input
+- use existing building records from the database
+- likely a dropdown or searchable select
+- only valid buildings can receive reports
+
+3. STUDENT SUBMISSION FLOW
+The student should be able to:
+- upload or take a photo of the item
+- choose the building where they found it
+- optionally add a short note, e.g. “on a table near the front entrance”
+
+Keep this fast and low-friction.
+The submission should be optimized for someone standing in a building and reporting the item in under 30 seconds.
+
+Minimal required fields:
+- building
+- photo
+
+Optional:
+- note
+- maybe a more specific location if useful, but do not overcomplicate v1
+
+4. WHAT HAPPENS ON SUBMIT
+Submitting should create a PENDING FOUND-ITEM REPORT, not a live item in the public student search.
+
+That pending report should be tied to:
+- reporting user
+- campus
+- building
+- uploaded photo
+- optional note
+- created_at
+- status
+
+Suggested initial status:
+- pending_review
+or
+- pending_pickup
+
+5. WHO SHOULD RECEIVE IT
+The report should be routed to:
+- the staff/building manager account(s) tied to that building
+- the main campus admin account
+
+The building-specific staff should be the primary operational owners.
+Campus admin should also be able to see it for oversight and backup.
+
+Do not route it campus-wide to all staff indiscriminately.
+
+6. WHERE THEY SHOULD RECEIVE IT
+Primary place:
+- inside the staff/admin dashboard in a dedicated queue
+
+Examples:
+- “Found item reports”
+- “Pending found-item reports”
+- “Student reports”
+
+This dashboard queue should be the system of record.
+
+Optional secondary notification:
+- email alert to building manager/staff and/or campus admin
+
+But email should be secondary. The dashboard is primary.
+
+7. AI USAGE
+I want to use the existing AI/image-analysis capability, but in a controlled way.
+
+AI should assist by generating:
+- suggested description
+- suggested category
+- high-value flag
+- sensitive flag
+
+Important:
+- AI output should NOT auto-publish anything
+- AI output should NOT directly create a live public item
+- AI should only create suggested metadata attached to the pending report
+
+The building manager/staff remains the final authority.
+
+8. STAFF REVIEW FLOW
+When staff opens a pending found-item report, they should be able to review:
+- photo
+- building
+- student note
+- AI-suggested description
+- AI-suggested category
+- AI high-value / sensitive flags
+- report timestamp
+- reporting context if useful
+
+Staff actions should include:
+- Accept / Convert to item
+- Mark retrieved
+- Dismiss / Reject
+
+Possible interpretations:
+- “Accept / Convert to item” means staff has accepted the report and wants to create a real lost-and-found item listing
+- “Mark retrieved” can mean the staff physically picked up the item and may then continue with conversion/logging flow
+- “Dismiss / Reject” handles spam, mistakes, duplicates, or invalid submissions
+
+Keep the flow simple and operationally useful.
+
+9. WHAT “ACCEPT” SHOULD DO
+When the building manager/staff accepts the report, the system should create a real row in the items table using approved values.
+
+That means:
+- create a real item in the database
+- attach the correct campus and building
+- use the photo
+- use AI suggestions as prefilled/default values if appropriate
+- allow staff-reviewed values to become the actual item fields
+- preserve high-value/sensitive flags appropriately
+- mark the pending report as accepted/converted
+- link the new item row back to the original pending report if useful
+
+I want a proper conversion flow:
+pending student report -> staff reviews -> real item gets created
+
+Students should not directly create real item records.
+
+10. DEFENSIVE / ANTI-ABUSE REQUIREMENTS
+This feature must be designed so students cannot waste AI credits or spam the system.
+
+Required defensive measures:
+- user must be authenticated to submit
+- validate that the selected building exists before doing anything expensive
+- validate that a real image file exists before any AI call
+- enforce image type/size validation
+- only run AI once per submission
+- do not expose any “regenerate AI” button to students
+- keep AI invocation server-side/protected, not directly user-controlled
+- add rate limiting for submissions
+
+Suggested initial rate limits:
+- max 3 submissions per hour per user
+- max 10 submissions per day per user
+
+If feasible, also consider backup abuse controls:
+- per-IP or per-device heuristics
+- duplicate detection
+- repeated identical image uploads
+- suspicious repeated submissions across multiple buildings
+
+Do not overbuild abuse prevention, but do enough to prevent obvious waste.
+
+11. DATA MODEL INTENT
+I do NOT want these pending student reports shoved directly into the main items table before review.
+Use a separate pending/intake table, something like:
+- found_item_reports
+
+This should be clearly distinct from the real items table.
+
+Suggested conceptual fields for found_item_reports:
+- id
+- campus_slug or campus_id
+- building or building_id
+- reported_by_user_id
+- photo_url
+- note
+- status
+- ai_description
+- ai_category
+- ai_high_value
+- ai_sensitive
+- accepted_item_id (nullable)
+- reviewed_by_user_id (nullable)
+- reviewed_at (nullable)
+- created_at
+- updated_at
+
+This is not strict final schema if a cleaner version makes sense, but the concept should be:
+pending report data lives separately from real item data.
+
+12. PERMISSIONS / ACCESS MODEL
+Student:
+- can submit a found-item report
+- can maybe view that they submitted one, if useful later
+- cannot publish it live
+- cannot approve it
+- cannot convert it into an item
+
+Building staff / building manager:
+- can see reports for buildings assigned to them
+- can review
+- can accept/convert
+- can dismiss
+- can mark retrieved
+
+Campus admin:
+- can see all reports for the campus
+- can also review/accept/dismiss as backup/oversight
+
+This should follow the same building/campus scoping model as the rest of FoundFolio.
+
+13. UX EXPECTATIONS
+The experience should be:
+- mobile-friendly
+- quick
+- clean
+- not overloaded
+- not dashboard-y on the student side
+- operational on the staff side
+
+Student UX goal:
+“Found something? Snap a photo, choose the building, submit.”
+
+Staff UX goal:
+“See report, assess quickly, convert to real item if valid.”
+
+14. WHAT I WANT FROM YOU
+Please do not just code randomly.
+First, use this description to propose the cleanest MVP implementation.
+
+I want you to return:
+1. the recommended schema/data model for pending found-item reports
+2. the exact routing/notification model
+3. the best place to surface this in the student UI
+4. the staff review flow
+5. how the “accept” action converts a report into a real item row
+6. how and where AI should run
+7. how to implement rate limiting cleanly
+8. the RLS / permission implications
+9. the exact files/components/pages/functions you would create or modify
+10. any migration(s) needed
+11. any edge functions or server-side handlers needed
+12. any risks, tradeoffs, or simplifications you recommend for MVP
+
+IMPORTANT CONSTRAINTS
+- Do not overbuild this
+- Keep it MVP
+- Keep it safe from abuse
+- Keep staff in control
+- Keep AI as an assist layer, not the authority
+- Keep building routing strict
+- Use only supported buildings already in the database
+- Keep the system of record in the staff/admin dashboard, not email
+- Students report, staff approve
+
+Also, please align this feature with the existing FoundFolio architecture rather than inventing a separate disconnected system.
