@@ -10,16 +10,18 @@ import {
   Link2,
   Copy,
   Check,
+  Inbox,
 } from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
 import ItemsList from "../components/ItemsList";
 import BuildingsManager from "../components/BuildingsManager";
 import ManageStaff from "../components/ManageStaff";
+import FoundReportsQueue from "../components/FoundReportsQueue";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
-type AdminView = "analytics" | "buildings" | "staff";
+type AdminView = "analytics" | "buildings" | "staff" | "reports";
 
 type BuildingRow = {
   id: string;
@@ -359,7 +361,7 @@ export default function AdminPage() {
             <>
               {/* Admin Tabs */}
               <div className="bg-white rounded-xl border border-slate-200 p-1.5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   <button
                     onClick={() => setAdminView("analytics")}
                     className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
@@ -382,6 +384,18 @@ export default function AdminPage() {
                   >
                     <Building2 className="w-4 h-4 shrink-0" />
                     <span className="truncate">Buildings</span>
+                  </button>
+
+                  <button
+                    onClick={() => setAdminView("reports")}
+                    className={`w-full min-w-0 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+                      adminView === "reports"
+                        ? "bg-blue-500 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Inbox className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Reports</span>
                   </button>
 
                   {isCampusAdmin && (
@@ -482,20 +496,65 @@ export default function AdminPage() {
                   }))}
                 />
               )}
+
+              {adminView === "reports" && (
+                <FoundReportsQueue campus={campus} buildingId={null} />
+              )}
             </>
           ) : (
             <>
+              {/* Building manager: Items / Reports toggle */}
+              {isBuildingManager && (
+                <div className="bg-white rounded-xl border border-slate-200 p-1.5 mb-0" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => setAdminView("analytics")}
+                      className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+                        adminView !== "reports"
+                          ? "bg-blue-500 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <BarChart3 className="w-4 h-4 shrink-0" />
+                      <span>Items</span>
+                    </button>
+                    <button
+                      onClick={() => setAdminView("reports")}
+                      className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+                        adminView === "reports"
+                          ? "bg-blue-500 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <Inbox className="w-4 h-4 shrink-0" />
+                      <span>Reports</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Per-building intake */}
-              <AddItemForm
-                onSuccess={handleItemAdded}
-                campus={campus}
-                building={selectedBuildingNameForProps}
-              />
-              <ItemsList
-                refreshTrigger={refreshTrigger}
-                campus={campus}
-                building={selectedBuildingNameForProps}
-              />
+              {adminView !== "reports" && (
+                <>
+                  <AddItemForm
+                    onSuccess={handleItemAdded}
+                    campus={campus}
+                    building={selectedBuildingNameForProps}
+                  />
+                  <ItemsList
+                    refreshTrigger={refreshTrigger}
+                    campus={campus}
+                    building={selectedBuildingNameForProps}
+                  />
+                </>
+              )}
+
+              {adminView === "reports" && isBuildingManager && (
+                <FoundReportsQueue
+                  campus={campus}
+                  buildingId={profile?.building_id ?? null}
+                />
+              )}
             </>
           )}
         </div>

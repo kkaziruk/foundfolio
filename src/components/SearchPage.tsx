@@ -1,7 +1,8 @@
 // src/pages/SearchPage.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { Search, SlidersHorizontal, X, MapPin, ImageIcon, ChevronDown } from "lucide-react";
+import { Search, SlidersHorizontal, X, MapPin, ImageIcon, ChevronDown, HandHeart } from "lucide-react";
 import { supabase, Item } from "../lib/supabase";
+import ReportFoundItem from "./ReportFoundItem";
 
 interface SearchPageProps {
   campus: string;
@@ -70,6 +71,7 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
   const [results, setResults] = useState<Item[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -470,9 +472,37 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
               </div>
             </div>
 
+            {/* Found something? entry card */}
+            <div className="mt-2">
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="w-full flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-4 py-4 text-left hover:border-blue-200 hover:bg-blue-50 transition-all duration-150 group"
+                style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}
+              >
+                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <HandHeart className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 group-hover:text-blue-700 transition-colors">
+                    Found something?
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Submit a quick report — staff will take it from there
+                  </p>
+                </div>
+                <div className="w-6 h-6 rounded-full bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center flex-shrink-0 transition-colors">
+                  <ChevronDown className="w-3 h-3 text-slate-400 group-hover:text-blue-500 -rotate-90" />
+                </div>
+              </button>
+            </div>
+
           </div>
         )}
       </div>
+
+      {showReportModal && (
+        <ReportFoundItem campus={campus} onClose={() => setShowReportModal(false)} />
+      )}
 
       {/* Footer */}
       <div className="border-t border-slate-100 bg-white py-4 px-4 mt-auto">

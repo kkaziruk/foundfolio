@@ -45,7 +45,8 @@ A shared CSS design token system lives in `src/index.css`:
   - ItemDetail: aspect-ratio image, metadata rows with colored icon badges, date_found shown, CTA note
   - Nav: slim h-14 sticky bar, small logo, inline campus name, sign out link
 - **Admin/staff views** (laptop): `AdminPage.tsx`, `AdminDashboard.tsx`, `ItemsList.tsx`, `AddItemForm.tsx`
-  - AdminPage: sticky h-14 nav, compact building selector bar, segmented tab control for Analytics/Buildings/Staff
+  - AdminPage: sticky h-14 nav, compact building selector bar, segmented tab control for Analytics/Buildings/Reports/Staff
+  - Campus admins: 4-tab view (Analytics, Buildings, Reports, Staff); building managers: 2-tab toggle (Items, Reports)
   - AddItemForm: mobile SnapPager flow (step-by-step), AI-assisted category/description
   - ItemsList: search + bulk select + move modal + export
   - AdminDashboard: recharts 2.13.3 — BarChart (logged vs claimed), PieChart (categories), donut (claim rate), location progress bars
@@ -62,4 +63,29 @@ A shared CSS design token system lives in `src/index.css`:
 - Google OAuth: add `https://5d1ad44a-7c1a-4aa2-b2fd-fadf55122452-00-2r6qiaax5v9va.kirk.replit.dev/**` to Supabase Auth → Redirect URLs
 - Three roles: `student`, `building_manager`, `campus_admin`
 - Student queries never return `additional_notes` (security)
-- Supabase edge functions: `analyze-image`, `export-items`
+- Supabase edge functions: `analyze-image`, `export-items`, `submit-found-report`
+
+## Report Found Item Feature
+
+Students can report found items from the search page idle state ("Found something?" card).
+
+### Flow
+1. Student taps "Found something?" on `/search/{campus}` (idle state)
+2. 3-step modal: photo upload → building + note → submit
+3. Photo uploaded to `item-photos` bucket under `found-reports/{campus_slug}/` prefix
+4. Edge function `submit-found-report` validates auth, rate-limits (3/hr, 10/day), validates building, inserts report, then runs AI enrichment (non-blocking — failure only leaves AI fields null)
+5. Staff (building managers + campus admins) see reports in the "Reports" tab of AdminPage
+6. Staff can convert a report to an item (with partial-failure safety) or dismiss it
+
+### Key files
+- `src/components/ReportFoundItem.tsx` — student-facing modal
+- `src/components/FoundReportsQueue.tsx` — staff queue + detail panel + convert/dismiss
+- `supabase/functions/submit-found-report/index.ts` — edge function
+- `supabase/migrations/20260319100000_add_found_item_reports.sql` — table, RLS, trigger
+
+### Schema: found_item_reports
+- `campus_slug` (text) — denormalized from `buildings.campus`; matches `profiles.campus_slug`
+- `building_id` (uuid FK → buildings.id)
+- `status`: `pending_review | converted | dismissed` (CHECK constraint enforced at DB level)
+- `updated_at` auto-updated via `trigger_found_reports_updated_at` trigger
+- RLS: student insert + view-own; staff view/update scoped by campus_slug + building_id
