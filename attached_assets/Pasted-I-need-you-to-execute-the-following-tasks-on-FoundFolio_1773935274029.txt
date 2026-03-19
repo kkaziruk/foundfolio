@@ -1,0 +1,61 @@
+I need you to execute the following tasks on FoundFolio. Do not generalize—implement and verify each one.
+
+1. Fix delete (highest priority)
+- Trace the full delete flow end-to-end (UI → handler → Supabase call → UI state update)
+- Reproduce the bug
+- Surface the exact error (console + network)
+- Identify the root cause (not guesses)
+- Fix it
+- Confirm the item is actually removed from DB and UI updates correctly
+
+2. Remove “Preview mode”
+- Delete the “Preview mode” label from the header entirely
+- Do not replace it with anything
+- Ensure admin can still use search normally
+
+3. Clean up student search UI language
+- Remove:
+  - “date logged”
+  - “recently logged items”
+  - any internal/system wording
+- Replace with neutral, user-facing language or remove entirely
+- The page should feel like a real product, not a dashboard
+
+4. Fix time display
+- Remove “Found X days ago”
+- If needed, keep absolute date (e.g. “Date found: March 10”)
+- Make sure time info does not create doubt or friction
+
+5. Verify analyze-image integration
+- Confirm frontend uses `data.high_value` (not `is_high_value`)
+- Test with clearly high-value items (wallet, headphones)
+- Confirm flag is applied correctly in UI and DB
+
+6. Fix export request
+- Ensure export fetch includes BOTH:
+  - Authorization: Bearer token
+  - apikey: Supabase anon key
+- Verify export works from real UI (no 401/403)
+
+7. Ensure building hours are dynamic
+- Remove any hardcoded open/close times
+- Ensure hours come from building data/settings
+- Confirm changing hours updates UI automatically
+
+8. Verify invite-staff function integration
+- Confirm frontend calls the deployed function correctly
+- Confirm only campus_admin can invite
+- Confirm invite email redirects to `${APP_URL}/reset-password`
+- Confirm no mismatch between frontend flow and function logic
+
+9. Clean up dead code
+- Remove unused fields like:
+  - data.specific_location ?? data.location (if not used)
+- Remove any unused variables or fallback logic that never executes
+
+Output:
+After completing, give me:
+1. Exact files changed
+2. Root cause of delete bug
+3. Any remaining risks or inconsistencies
+4. Any places where frontend assumptions don’t match backend behavior
