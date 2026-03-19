@@ -1,0 +1,64 @@
+You are helping me clean up the FoundFolio product UI and debug one broken action.
+
+Context:
+FoundFolio is a campus lost-and-found web app. There are student and admin/staff users. The product should feel real and production-ready, not like a mockup or internal dashboard. Prioritize clean UX, consistent language, and working core actions.
+
+Tasks:
+
+1. Remove misleading “preview” language
+- In the student search / item browsing experience shown to admins, remove the “Preview mode” badge from the top header.
+- Do not replace it with “preview” language.
+- Keep the header clean and real.
+- If needed, admins can still use the same search experience as students. Admin-specific controls should live in the interface itself, not through a fake “preview mode” label.
+
+2. Remove unnecessary relative time language from the student-facing item detail/search UI
+- Remove text like “Found 3 days ago”.
+- Do not show relative time on student-facing item cards or item detail views.
+- Keep or use the absolute “Date found” only where useful.
+- Replace any internal/system-facing language like “date logged” with user-facing wording like “Date found” or remove it if unnecessary.
+
+3. Remove “recently logged items” framing from student-facing search pages
+- This feels like internal database language and is not appropriate for students.
+- Replace it with more neutral student-facing browsing language, or remove the section if it is not needed.
+- The student experience should answer: “Is this mine?” and “Where do I claim it?” — not expose admin/system terminology.
+
+4. Keep building claim hours dynamic, not hardcoded
+- Find where the “Where to claim” section is rendering building open/close hours.
+- Make sure the UI is wired so those hours come from building settings / building data, not filler text.
+- If the backend/settings model already exists, connect the UI properly.
+- If it does not exist yet, add a clean TODO comment or minimal schema-compatible hook so this can be managed per building by staff later.
+- Goal: building managers should be able to update hours and have that reflect automatically across item cards/details.
+
+5. Investigate and fix delete not working
+- The delete action is currently broken.
+- Trace the full delete flow end-to-end:
+  a) identify every delete button/component
+  b) identify the handler it calls
+  c) identify the API / Supabase delete query / mutation it triggers
+  d) inspect auth, RLS, and any soft-delete logic
+  e) verify UI refresh after deletion
+- Find the actual root cause instead of guessing.
+- Common things to check:
+  - wrong item id being passed
+  - delete handler not firing
+  - event propagation / button inside card issue
+  - Supabase RLS blocking delete
+  - delete succeeds but local state not updating
+  - soft delete expected but hard delete implemented, or vice versa
+  - admin permissions mismatch
+- Add clear console logs temporarily while debugging, then remove noisy logs before finishing.
+- After fixing, confirm delete works from the admin/staff flow.
+
+6. Keep changes production-clean
+- Reuse existing components where possible.
+- Do not introduce hacky one-off conditions unless necessary.
+- Preserve visual consistency.
+- Avoid breaking student search or admin workflows.
+
+Deliverables:
+- Make the code changes.
+- Then give me a concise summary:
+  1) what you changed
+  2) root cause of delete issue
+  3) any follow-up items still needed
+  4) any files touched

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, MapPin, Tag, Calendar, CheckCircle, ArrowRight, Circle, X, Copy, Check } from "lucide-react";
-import { Item } from "../lib/supabase";
+import { Item, supabase } from "../lib/supabase";
 
 interface ItemDetailProps {
   item: Item;
@@ -14,24 +14,29 @@ function formatDate(dateStr: string | null | undefined): string {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-function daysAgo(dateStr: string | null | undefined): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "";
-  const diff = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  if (diff === 0) return "Found today";
-  if (diff === 1) return "Found yesterday";
-  if (diff < 30) return `Found ${diff} days ago`;
-  return `Found ${formatDate(dateStr)}`;
-}
-
 export default function ItemDetail({ item, onBack }: ItemDetailProps) {
-  const dateLabel = daysAgo(item.date_found as string | null | undefined);
   const dateFormatted = formatDate(item.date_found as string | null | undefined);
   const isClaimed = item.status === "claimed" || item.status === "picked_up";
 
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [claimHours, setClaimHours] = useState<string | null>(null);
+
+  useEffect(() => {
+    const building = item.building;
+    const campus = item.campus_slug;
+    if (!building || !campus) return;
+
+    supabase
+      .from("buildings")
+      .select("claim_hours")
+      .eq("campus_slug", campus)
+      .eq("name", building)
+      .maybeSingle()
+      .then(({ data }) => {
+        setClaimHours(data?.claim_hours ?? null);
+      });
+  }, [item.building, item.campus_slug]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -39,6 +44,8 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
       setTimeout(() => setCopied(false), 2000);
     });
   };
+
+  const hoursLine = claimHours ?? "Contact the building for current hours";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -81,7 +88,7 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
 
           {/* Content */}
           <div className="p-5 sm:p-7">
-            {/* Status badge + date */}
+            {/* Status badge */}
             <div className="flex items-center gap-2 mb-3">
               {isClaimed ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
@@ -93,9 +100,6 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
                   <Circle className="w-3 h-3" />
                   Available
                 </span>
-              )}
-              {dateLabel && (
-                <span className="text-xs font-medium text-slate-400">{dateLabel}</span>
               )}
             </div>
 
@@ -153,9 +157,7 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
                     <p className="text-sm font-semibold text-blue-800 mb-1">
                       {item.building} — Lost &amp; Found desk
                     </p>
-                    <p className="text-xs text-blue-600 mb-3">
-                      Mon–Fri 8am–5pm · Sat 10am–2pm
-                    </p>
+                    <p className="text-xs text-blue-600 mb-3">{hoursLine}</p>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
@@ -175,7 +177,7 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               </div>
             )}
 
-            {/* "This looks like mine" CTA */}
+            {/* CTA */}
             {!isClaimed && (
               <button
                 onClick={() => setShowClaimModal(true)}
@@ -219,7 +221,6 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
           onClick={(e) => { if (e.target === e.currentTarget) setShowClaimModal(false); }}
         >
           <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-            {/* Modal header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Ready to claim this?</h2>
@@ -233,16 +234,13 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               </button>
             </div>
 
-            {/* Modal body */}
             <div className="px-5 py-5 space-y-4">
-              {/* Where to go */}
               <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
                 <p className="text-sm font-bold text-blue-900 mb-1">Head to the lost &amp; found desk</p>
                 <p className="text-sm font-semibold text-blue-800">{item.building}</p>
-                <p className="text-xs text-blue-600 mt-0.5">Mon–Fri 8am–5pm · Sat 10am–2pm</p>
+                <p className="text-xs text-blue-600 mt-0.5">{hoursLine}</p>
               </div>
 
-              {/* What to bring */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">What to bring</p>
                 <div className="space-y-1.5">
@@ -259,7 +257,6 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
                 </div>
               </div>
 
-              {/* Copy link */}
               <button
                 onClick={handleCopyLink}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-medium text-slate-700 transition-colors"
@@ -278,7 +275,6 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
               </button>
             </div>
 
-            {/* Modal footer */}
             <div className="px-5 pb-5">
               <button
                 onClick={() => setShowClaimModal(false)}

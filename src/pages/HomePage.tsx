@@ -100,16 +100,16 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: preview mode pill + sign out */}
+          {/* Right: dashboard link + sign out */}
           <div className="flex items-center gap-2">
             {isStaff && (
               <button
                 onClick={() => navigate(`/admin/${campus}`)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors text-sm font-medium"
                 title="Back to admin dashboard"
               >
-                <LayoutDashboard className="w-3 h-3" />
-                Preview mode
+                <LayoutDashboard className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
               </button>
             )}
 

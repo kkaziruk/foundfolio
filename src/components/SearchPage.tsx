@@ -57,17 +57,6 @@ const CATEGORY_GROUPS: { label: string; items: string[] }[] = [
   },
 ];
 
-function relativeDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "";
-  const diff = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
-  if (diff < 7) return `${diff}d ago`;
-  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
 
 export default function SearchPage({ campus, campusName, onViewItem }: SearchPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -419,16 +408,13 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
         {!isSearching && results.length > 0 && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {results.map((item) => {
-                const dateStr = relativeDate(item.date_found as string | null | undefined);
-                return (
+              {results.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => onViewItem(item as Item)}
                     className="text-left bg-white rounded-xl border border-slate-200 overflow-hidden group transition-all duration-150 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" }}
                   >
-                    {/* Photo — 60% of card height via aspect ratio */}
                     <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100 relative">
                       {item.photo_url ? (
                         <img
@@ -444,7 +430,6 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
                           </div>
                         </div>
                       )}
-                      {/* Category badge overlay */}
                       {item.category && (
                         <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 text-slate-700 border border-slate-200/80 backdrop-blur-sm leading-tight">
                           {item.category}
@@ -456,17 +441,13 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
                       <p className="text-[15px] font-medium text-slate-900 leading-snug line-clamp-2 mb-1.5">
                         {item.description}
                       </p>
-                      <div className="flex items-center gap-1 mb-0.5">
+                      <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                         <span className="text-[11px] text-slate-500 truncate">{item.building}</span>
                       </div>
-                      {dateStr && (
-                        <p className="text-[11px] text-slate-400">{dateStr}</p>
-                      )}
                     </div>
                   </button>
-                );
-              })}
+              ))}
             </div>
             {/* Not seeing your item — shown when results are sparse or any search */}
             <div className="mt-6 text-center">
@@ -481,16 +462,14 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
         {/* ── Pre-search idle state ── */}
         {!isSearching && !hasSearched && (
           <div>
-            {/* Recently logged items */}
+            {/* Recently found items */}
             {recentItems.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                  Recently logged
+                  Recently found
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {recentItems.map((item) => {
-                    const dateStr = relativeDate(item.date_found as string | null | undefined);
-                    return (
+                  {recentItems.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => onViewItem(item as Item)}
@@ -526,13 +505,9 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
                             <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                             <span className="text-[11px] text-slate-500 truncate">{item.building}</span>
                           </div>
-                          {dateStr && (
-                            <p className="text-[11px] text-slate-400 mt-0.5">{dateStr}</p>
-                          )}
                         </div>
                       </button>
-                    );
-                  })}
+                  ))}
                 </div>
               </div>
             )}
