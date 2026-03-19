@@ -371,6 +371,7 @@ useEffect(() => {
       const res = await fetch(apiUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? "",
         },
       });
 
