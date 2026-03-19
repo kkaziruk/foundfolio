@@ -233,7 +233,7 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Describe your item — e.g. blue backpack"
-                  className={`ff-input pr-4 ${searchTerm ? "pl-4" : "pl-10"}`}
+                  className={`ff-input pr-4 ${searchTerm ? "pl-4" : "pl-12"}`}
                   style={{ paddingTop: "0.8125rem", paddingBottom: "0.8125rem" }}
                   autoFocus
                 />
