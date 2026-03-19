@@ -86,6 +86,10 @@ export default function ItemsList({ refreshTrigger, campus, building }: ItemsLis
   const [moveAppendNote, setMoveAppendNote] = useState<boolean>(true);
   const [moveSubmitting, setMoveSubmitting] = useState(false);
 
+  // Delete confirmation modal
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
   // Bulk select
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedCount = selectedIds.size;
@@ -264,38 +268,42 @@ useEffect(() => {
     setLoadingMore(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
-    const { error } = await supabase.from("items").delete().eq("id", id);
-    if (error) {
-      console.error("Delete error:", error);
-      alert(`Failed to delete item: ${error.message}`);
-      return;
-    }
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+  const handleDelete = (id: string) => {
+    setPendingDeleteIds([id]);
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
+    setPendingDeleteIds(ids);
+  };
 
-    const ok = confirm(`Delete ${ids.length} item(s)? This cannot be undone.`);
-    if (!ok) return;
+  const confirmDelete = async () => {
+    if (!pendingDeleteIds || pendingDeleteIds.length === 0) return;
+    setDeleteSubmitting(true);
+    try {
+      const isBulk = pendingDeleteIds.length > 1;
+      const { error } = isBulk
+        ? await supabase.from("items").delete().in("id", pendingDeleteIds)
+        : await supabase.from("items").delete().eq("id", pendingDeleteIds[0]);
 
-    const { error } = await supabase.from("items").delete().in("id", ids);
-    if (error) {
-      console.error(error);
-      alert("Failed to delete selected items.");
-      return;
+      if (error) {
+        console.error("Delete error:", error);
+        alert(`Failed to delete: ${error.message}`);
+        return;
+      }
+
+      const deleted = new Set(pendingDeleteIds);
+      setItems((prev) => prev.filter((it) => !deleted.has(it.id)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pendingDeleteIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setPendingDeleteIds(null);
+    } finally {
+      setDeleteSubmitting(false);
     }
-
-    setItems((prev) => prev.filter((it) => !selectedIds.has(it.id)));
-    clearSelection();
   };
 
   // ===== Claim flow (kept) =====
@@ -1273,6 +1281,43 @@ useEffect(() => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {pendingDeleteIds && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {pendingDeleteIds.length === 1 ? "Delete item?" : `Delete ${pendingDeleteIds.length} items?`}
+                </h3>
+                <p className="text-sm text-slate-500 mt-0.5">This cannot be undone.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteIds(null)}
+                disabled={deleteSubmitting}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleteSubmitting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm disabled:opacity-50"
+              >
+                {deleteSubmitting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
           </div>
         </div>
       )}

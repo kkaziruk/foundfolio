@@ -468,7 +468,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       const nextDescription = toTitleCase(nextDescriptionRaw);
 
       const nextCategory = toTitleCase((data.category ?? "").toString());
-      const nextLocation = toTitleCase((data.specific_location ?? data.location ?? "").toString());
 
       const aiSensitive = data.sensitive === true;
       const aiHighValue = data.high_value === true;
@@ -489,7 +488,6 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
         ...prev,
         description: nextDescription || prev.description,
         category: nextCategory || prev.category,
-        specific_location: nextLocation || prev.specific_location,
         sensitive,
         is_high_value,
         photo_url: sensitive ? null : publicUrl,
@@ -498,7 +496,7 @@ export default function AddItemForm({ onSuccess, campus, building }: AddItemForm
       setAiFilled({
         description: !!nextDescription,
         category: !!nextCategory,
-        specific_location: !!nextLocation,
+        specific_location: false,
       });
     } catch (err) {
       console.error("Upload/AI error:", err);
