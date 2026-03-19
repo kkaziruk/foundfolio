@@ -36,6 +36,7 @@ Deno.serve(async (req: Request) => {
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // Identify the caller using their session token
     const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -45,10 +46,11 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Unauthorized" }, 401);
     }
 
+    // Verify caller is a campus_admin for this campus
     const { data: profile, error: profileErr } = await callerClient
       .from("profiles")
       .select("role, campus_slug")
-      .eq("id", userData.user.id)
+      .eq("user_id", userData.user.id)
       .single();
 
     if (profileErr || !profile) {
@@ -59,19 +61,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Forbidden: campus_admin role required for this campus" }, 403);
     }
 
+    // Use service role to send the invite email
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: existingInvite } = await adminClient
-      .from("staff_invites")
-      .select("id, email")
-      .eq("email", email)
-      .eq("campus_slug", campus_slug)
-      .maybeSingle();
-
-    if (existingInvite) {
-      return json({ error: "An invite already exists for this email on this campus" }, 409);
-    }
-
+    // APP_URL must be set in Supabase project secrets (e.g. https://yourapp.vercel.app)
     const APP_URL = Deno.env.get("APP_URL") ?? SUPABASE_URL;
     const redirectTo = `${APP_URL}/reset-password`;
 
