@@ -71,7 +71,6 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  const [recentItems, setRecentItems] = useState<Item[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -111,25 +110,6 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
     };
 
     loadBuildings();
-    return () => { cancelled = true; };
-  }, [campus]);
-
-  // Load recently added items for idle state
-  useEffect(() => {
-    let cancelled = false;
-    const loadRecent = async () => {
-      try {
-        const { data } = await supabase
-          .from("items")
-          .select("id, photo_url, description, category, building, date_found, status")
-          .eq("campus_slug", campus)
-          .eq("status", "available")
-          .order("created_at", { ascending: false })
-          .limit(6);
-        if (!cancelled) setRecentItems((data ?? []) as Item[]);
-      } catch { /* ignore */ }
-    };
-    loadRecent();
     return () => { cancelled = true; };
   }, [campus]);
 
@@ -469,56 +449,6 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
         {/* ── Pre-search idle state ── */}
         {!isSearching && !hasSearched && (
           <div>
-            {/* Recently found items */}
-            {recentItems.length > 0 && (
-              <div className="mb-8">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                  Recently found
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {recentItems.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => onViewItem(item as Item)}
-                        className="text-left bg-white rounded-xl border border-slate-200 overflow-hidden group transition-all duration-150 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" }}
-                      >
-                        <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100 relative">
-                          {item.photo_url ? (
-                            <img
-                              src={item.photo_url}
-                              alt={item.description}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                              <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
-                                <ImageIcon className="w-5 h-5 text-slate-400" />
-                              </div>
-                            </div>
-                          )}
-                          {item.category && (
-                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 text-slate-700 border border-slate-200/80 leading-tight">
-                              {item.category}
-                            </span>
-                          )}
-                        </div>
-                        <div className="p-2.5">
-                          <p className="text-[15px] font-medium text-slate-900 leading-snug line-clamp-2 mb-1">
-                            {item.description}
-                          </p>
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                            <span className="text-[11px] text-slate-500 truncate">{item.building}</span>
-                          </div>
-                        </div>
-                      </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Quick-launch chips */}
             <div className="mb-8">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
