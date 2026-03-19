@@ -176,9 +176,9 @@ Deno.serve(async (req: Request) => {
     // Step 3: Validate building exists and belongs to this campus
     const { data: building, error: buildingErr } = await adminClient
       .from("buildings")
-      .select("id, name, campus")
+      .select("id, name, campus_slug")
       .eq("id", building_id)
-      .eq("campus", campus_slug)
+      .eq("campus_slug", campus_slug)
       .single();
 
     if (buildingErr || !building) {

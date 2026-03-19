@@ -84,7 +84,7 @@ Students can report found items from the search page idle state ("Found somethin
 - `supabase/migrations/20260319100000_add_found_item_reports.sql` — table, RLS, trigger
 
 ### Schema: found_item_reports
-- `campus_slug` (text) — denormalized from `buildings.campus`; matches `profiles.campus_slug`
+- `campus_slug` (text) — denormalized from `buildings.campus_slug`; matches `profiles.campus_slug`
 - `building_id` (uuid FK → buildings.id)
 - `status`: `pending_review | converted | dismissed` (CHECK constraint enforced at DB level)
 - `updated_at` auto-updated via `trigger_found_reports_updated_at` trigger

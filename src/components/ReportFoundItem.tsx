@@ -51,11 +51,12 @@ export default function ReportFoundItem({ campus, onClose }: Props) {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("buildings")
         .select("id, name")
-        .eq("campus", campus)
+        .eq("campus_slug", campus)
         .order("name");
+      console.log("[ReportFoundItem] buildings query:", { campus, count: data?.length, error });
       setBuildings((data ?? []) as BuildingOption[]);
     };
     load();

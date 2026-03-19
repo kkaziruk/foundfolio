@@ -22,7 +22,7 @@ interface FoundReport {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
-  buildings: { name: string; campus: string } | null;
+  buildings: { name: string; campus_slug: string } | null;
 }
 
 interface CategoryRow { id: string; name: string }
@@ -81,7 +81,7 @@ export default function FoundReportsQueue({ campus, buildingId }: Props) {
     try {
       let query = supabase
         .from("found_item_reports")
-        .select("*, buildings(name, campus)")
+        .select("*, buildings(name, campus_slug)")
         .eq("campus_slug", campus)
         .order("created_at", { ascending: false });
 
