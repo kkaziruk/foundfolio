@@ -223,7 +223,7 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
               <div className="flex-1 relative">
                 {!searchTerm && (
                   <Search
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    className="absolute left-3.5 inset-y-0 my-auto text-slate-400 pointer-events-none"
                     style={{ width: "18px", height: "18px" }}
                   />
                 )}
