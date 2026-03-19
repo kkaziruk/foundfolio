@@ -221,17 +221,19 @@ export default function SearchPage({ campus, campusName, onViewItem }: SearchPag
             {/* Search row */}
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Search
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  style={{ width: "18px", height: "18px" }}
-                />
+                {!searchTerm && (
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    style={{ width: "18px", height: "18px" }}
+                  />
+                )}
                 <input
                   ref={inputRef}
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Describe your item — e.g. blue backpack"
-                  className="ff-input pl-10 pr-4"
+                  className={`ff-input pr-4 ${searchTerm ? "pl-4" : "pl-10"}`}
                   style={{ paddingTop: "0.8125rem", paddingBottom: "0.8125rem" }}
                   autoFocus
                 />
