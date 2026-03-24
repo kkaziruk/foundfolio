@@ -12,6 +12,7 @@ import {
   Check,
   Inbox,
   Settings,
+  Printer,
 } from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
@@ -217,6 +218,141 @@ export default function AdminPage() {
   const selectedBuildingNameForProps = selectedBuilding
     ? selectedBuilding.name
     : "All Buildings";
+
+  const shareUrl = `${window.location.origin}/search/${campus}`;
+
+  const handleMakeFlyer = useCallback(() => {
+    const qrHiRes = `https://api.qrserver.com/v1/create-qr-code/?size=700x700&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=0f172a&margin=1`;
+
+    const buildingLine = isBuildingManager && selectedBuilding
+      ? selectedBuilding.name
+      : campusName;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoundFolio Flyer — ${buildingLine}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap');
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 20px 48px; }
+    .print-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; max-width: 540px; margin-bottom: 24px;
+    }
+    .print-bar p { font-size: 13px; color: #94a3b8; }
+    .print-btn {
+      background: #0f172a; color: white; border: none;
+      padding: 10px 22px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: inherit; letter-spacing: -0.1px;
+      transition: opacity 0.15s;
+    }
+    .print-btn:hover { opacity: 0.85; }
+    .flyer {
+      width: 100%; max-width: 540px;
+      background: white;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 28px;
+      padding: 60px 56px 52px;
+      text-align: center;
+    }
+    .brand {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-bottom: 48px;
+    }
+    .brand-dot {
+      width: 10px; height: 10px;
+      background: #0f172a; border-radius: 50%;
+    }
+    .brand-name {
+      font-size: 15px; font-weight: 700; color: #0f172a;
+      letter-spacing: -0.2px;
+    }
+    .headline {
+      font-size: 52px; font-weight: 900; color: #0f172a;
+      line-height: 1.0; letter-spacing: -2px;
+      margin-bottom: 14px;
+    }
+    .subhead {
+      font-size: 17px; color: #64748b; font-weight: 400;
+      line-height: 1.5; margin-bottom: 48px;
+    }
+    .qr-box {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 20px;
+      border: 2px solid #e2e8f0; border-radius: 24px;
+      margin-bottom: 32px;
+    }
+    .qr-box img { display: block; width: 240px; height: 240px; }
+    .or-row {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 20px;
+    }
+    .or-line { flex: 1; height: 1px; background: #e2e8f0; }
+    .or-text { font-size: 11px; color: #94a3b8; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+    .url-chip {
+      display: inline-block;
+      background: #f1f5f9; border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 13px; font-family: monospace;
+      color: #475569; margin-bottom: 48px;
+    }
+    .footer-rule { width: 48px; height: 2px; background: #e2e8f0; margin: 0 auto 20px; }
+    .campus-label { font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 2px; }
+    .campus-sub { font-size: 12px; color: #94a3b8; }
+    @media print {
+      html, body { background: white; padding: 0; }
+      .print-bar { display: none; }
+      .flyer { border: none; border-radius: 0; max-width: 100%; padding: 48px 48px 40px; }
+      .headline { font-size: 60px; }
+      .qr-box img { width: 280px; height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <p>Preview — print or save as PDF</p>
+    <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <div class="flyer">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">FoundFolio</span>
+    </div>
+
+    <p class="headline">Lost something?</p>
+    <p class="subhead">Scan to see if your item has<br>been turned in to lost &amp; found.</p>
+
+    <div class="qr-box">
+      <img src="${qrHiRes}" alt="QR code" />
+    </div>
+
+    <div class="or-row">
+      <span class="or-line"></span>
+      <span class="or-text">or visit</span>
+      <span class="or-line"></span>
+    </div>
+
+    <p class="url-chip">${shareUrl}</p>
+
+    <div class="footer-rule"></div>
+    <p class="campus-label">${buildingLine}</p>
+    <p class="campus-sub">Lost &amp; Found</p>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  }, [shareUrl, campusName, isBuildingManager, selectedBuilding]);
 
   const showCampusAdminPanels = useMemo(() => {
     return selectedBuildingId === ALL_BUILDINGS_ID && !isBuildingManager;
@@ -437,7 +573,6 @@ export default function AdminPage() {
 
                   {/* Shareable student URL + QR code */}
                   {(() => {
-                    const shareUrl = `${window.location.origin}/search/${campus}`;
                     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=0f172a&margin=2`;
                     return (
                       <div className="bg-white rounded-xl border border-slate-200 p-5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
@@ -447,11 +582,11 @@ export default function AdminPage() {
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-900">Student search page</p>
-                            <p className="text-xs text-slate-500">Share this URL or QR code so students can search for lost items</p>
+                            <p className="text-xs text-slate-500">Share this link, print the QR code, or make a flyer to post around your building</p>
                           </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 items-start">
+                        <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
                           {/* URL + copy */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200 px-3 py-2">
@@ -469,14 +604,11 @@ export default function AdminPage() {
                                 {copiedLink ? "Copied!" : "Copy"}
                               </button>
                             </div>
-                            <p className="text-xs text-slate-400 mt-2">
-                              Post this link on your campus website, email signature, or bulletin boards.
-                            </p>
                           </div>
 
                           {/* QR code */}
                           <div className="flex-shrink-0">
-                            <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
+                            <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
                               <img
                                 src={qrUrl}
                                 alt={`QR code for ${shareUrl}`}
@@ -484,9 +616,17 @@ export default function AdminPage() {
                                 loading="lazy"
                               />
                             </div>
-                            <p className="text-[10px] text-slate-400 text-center mt-1">Scan to open</p>
                           </div>
                         </div>
+
+                        {/* Flyer button */}
+                        <button
+                          onClick={handleMakeFlyer}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 active:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          <Printer className="w-4 h-4" />
+                          Make a printable flyer
+                        </button>
                       </div>
                     );
                   })()}
