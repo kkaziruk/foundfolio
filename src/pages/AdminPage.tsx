@@ -11,6 +11,7 @@ import {
   Copy,
   Check,
   Inbox,
+  Settings,
 } from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
@@ -18,6 +19,7 @@ import ItemsList from "../components/ItemsList";
 import BuildingsManager from "../components/BuildingsManager";
 import ManageStaff from "../components/ManageStaff";
 import FoundReportsQueue from "../components/FoundReportsQueue";
+import BuildingSettings from "../components/BuildingSettings";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -48,6 +50,7 @@ export default function AdminPage() {
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
   const [campusName, setCampusName] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -287,6 +290,17 @@ export default function AdminPage() {
             >
               <SearchIcon className="w-4 h-4" />
             </button>
+
+            {isBuildingManager && (
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                aria-label="Building settings"
+                title="Building settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
 
             <button
               onClick={handleSignOut}
@@ -559,6 +573,14 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+
+      {showSettings && isBuildingManager && profile?.building_id && (
+        <BuildingSettings
+          buildingId={profile.building_id}
+          buildingName={selectedBuilding?.name ?? "Your building"}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }
