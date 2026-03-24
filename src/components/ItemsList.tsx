@@ -14,14 +14,12 @@ import {
   Tag,
   Building2,
   User,
-  Calendar,
   LayoutGrid,
   List,
   AlertTriangle,
 } from "lucide-react";
 import { BRAND } from "../lib/brand";
 import { supabase, Item } from "../lib/supabase";
-import { formatLoggedAt } from "../lib/dates";
 
 interface ItemsListProps {
   refreshTrigger: number;
@@ -713,7 +711,6 @@ useEffect(() => {
                           <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                           <span className="text-[11px] text-slate-500 truncate">{displayBuildingName(campus, item.building)}</span>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{formatLoggedAt((item as any).logged_at)}</p>
                       </div>
                     </button>
                     {/* Grid overflow menu */}
@@ -899,10 +896,6 @@ useEffect(() => {
                           <span className="font-medium">Location:</span> {item.specific_location}
                         </div>
 
-                        <div>
-                          <span className="font-medium">Logged:</span>{" "}
-                          {formatLoggedAt((item as any).logged_at)}
-                        </div>
                       </div>
 
                       {item.additional_notes && (
@@ -1204,10 +1197,6 @@ useEffect(() => {
                     <span><span className="font-medium text-slate-700">Logged by:</span> {(detailItem as any).logged_by_name}</span>
                   </div>
                 )}
-                <div className="flex items-start gap-2 text-slate-600">
-                  <Calendar className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                  <span><span className="font-medium text-slate-700">Date logged:</span> {formatLoggedAt((detailItem as any).logged_at)}</span>
-                </div>
               </div>
 
               {detailItem.status === "available" && (
