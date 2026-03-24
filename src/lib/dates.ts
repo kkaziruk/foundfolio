@@ -6,7 +6,5 @@ export function formatLoggedAt(ts?: string | null) {
     month: "short",
     day: "numeric",
     year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   }).format(d);
 }
