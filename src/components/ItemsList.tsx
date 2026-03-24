@@ -122,8 +122,6 @@ useEffect(() => {
       return;
     }
 
-    console.log("EXPORT CHECK – profile:", profile);
-
     setCanExport(profile?.role === "campus_admin");
   })();
 }, [campus]);
@@ -280,6 +278,17 @@ useEffect(() => {
     if (!pendingDeleteIds || pendingDeleteIds.length === 0) return;
     setDeleteSubmitting(true);
     try {
+      // Collect storage paths for any photos so we can clean them up after
+      const BUCKET = "item-photos";
+      const MARKER = `/object/public/${BUCKET}/`;
+      const photoPaths = items
+        .filter((it) => pendingDeleteIds.includes(it.id) && it.photo_url)
+        .map((it) => {
+          const idx = it.photo_url!.indexOf(MARKER);
+          return idx !== -1 ? decodeURIComponent(it.photo_url!.slice(idx + MARKER.length)) : null;
+        })
+        .filter(Boolean) as string[];
+
       const isBulk = pendingDeleteIds.length > 1;
       const { error } = isBulk
         ? await supabase.from("items").delete().in("id", pendingDeleteIds)
@@ -289,6 +298,13 @@ useEffect(() => {
         console.error("Delete error:", error);
         alert(`Failed to delete: ${error.message}`);
         return;
+      }
+
+      // Remove photos from storage (fire-and-forget — DB row is already gone)
+      if (photoPaths.length > 0) {
+        supabase.storage.from(BUCKET).remove(photoPaths).then(({ error: storageErr }) => {
+          if (storageErr) console.warn("Storage cleanup after delete failed:", storageErr);
+        });
       }
 
       const deleted = new Set(pendingDeleteIds);
