@@ -802,6 +802,63 @@ export default function AdminPage() {
                     campus={campus}
                     building={selectedBuildingNameForProps}
                   />
+
+                  {/* Student Search Page + flyer (building manager) */}
+                  {(() => {
+                    const flyerUrl = "https://www.foundfolio.co/login";
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(flyerUrl)}&bgcolor=ffffff&color=0f172a&margin=2`;
+                    return (
+                      <div className="bg-white rounded-xl border border-slate-200 p-5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                            <Link2 className="w-3.5 h-3.5 text-blue-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">Student Search Page</p>
+                            <p className="text-xs text-slate-500">Share this link, print the QR code, or make a flyer to post around your building</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200 px-3 py-2">
+                              <span className="text-xs text-slate-600 font-mono truncate flex-1">foundfolio.co/login</span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(flyerUrl).then(() => {
+                                    setCopiedLink(true);
+                                    setTimeout(() => setCopiedLink(false), 2000);
+                                  });
+                                }}
+                                className="flex items-center gap-1.5 flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                              >
+                                {copiedLink ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copiedLink ? "Copied!" : "Copy"}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
+                              <img
+                                src={qrUrl}
+                                alt="QR code for student search page"
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setShowFlyerEditor(true)}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 active:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          <Printer className="w-4 h-4" />
+                          Make a printable flyer
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </>
               )}
 
