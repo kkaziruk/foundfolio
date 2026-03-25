@@ -46,12 +46,12 @@ const THEMES: Theme[] = [
     stripText: "#e2e8f0",
   },
   {
-    id: "warm",
-    label: "Warm",
-    headerBg: "#431407",
-    stripBg: "#c2410c",
-    accent: "#fde68a",
-    stripText: "#fed7aa",
+    id: "forest",
+    label: "Forest",
+    headerBg: "#14532d",
+    stripBg: "#166534",
+    accent: "#86efac",
+    stripText: "#bbf7d0",
   },
 ];
 
