@@ -137,7 +137,7 @@ export default function AdminSettings({
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Mail className="w-4 h-4 text-slate-400" />
-                  <p className="text-sm font-semibold text-slate-800">Student contact email</p>
+                  <p className="text-sm font-semibold text-slate-800">Student Contact Email</p>
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
                   Shown on item pages so students know who to contact with questions.
