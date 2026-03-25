@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import ItemPhoto from "./ItemPhoto";
 import {
   Trash2,
   Package,
@@ -690,24 +691,13 @@ useEffect(() => {
                       className="block w-full text-left"
                     >
                       <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100 relative">
-                        {isSensitive ? (
-                          <div className="w-full h-full bg-amber-50 flex items-center justify-center">
-                            <Package className="w-8 h-8 text-amber-400" />
-                          </div>
-                        ) : item.photo_url ? (
-                          <img
-                            src={item.photo_url}
-                            alt={item.description}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                            <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
-                              <ImageIcon className="w-5 h-5 text-slate-400" />
-                            </div>
-                          </div>
-                        )}
+                        <ItemPhoto
+                          photoUrl={item.photo_url}
+                          isSensitive={isSensitive}
+                          alt={item.description}
+                          className="w-full h-full"
+                          imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                         {/* Status badge */}
                         <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold leading-tight ${item.status === "available" ? "bg-blue-500 text-white" : "bg-amber-400 text-white"}`}>
                           {item.status === "available" ? "Available" : "Claimed"}
@@ -791,24 +781,13 @@ useEffect(() => {
                   </label>
 
                   <div className="flex gap-4">
-                    <div className="w-24 h-24 rounded-2xl border border-slate-200 bg-slate-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                      {isSensitive ? (
-                        <div className="w-full h-full bg-amber-50 flex items-center justify-center">
-                          <Package className="w-8 h-8 text-amber-400" />
-                        </div>
-                      ) : item.photo_url ? (
-                        <img
-                          src={item.photo_url}
-                          alt={item.description}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                          <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
-                            <ImageIcon className="w-5 h-5 text-slate-400" />
-                          </div>
-                        </div>
-                      )}
+                    <div className="w-24 h-24 rounded-2xl border border-slate-200 flex-shrink-0 overflow-hidden">
+                      <ItemPhoto
+                        photoUrl={item.photo_url}
+                        isSensitive={isSensitive}
+                        alt={item.description}
+                        className="w-full h-full"
+                      />
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -1185,11 +1164,14 @@ useEffect(() => {
               </button>
             </div>
 
-            {detailItem.photo_url && (
-              <div className="w-full aspect-video bg-slate-100 overflow-hidden">
-                <img src={detailItem.photo_url} alt={detailItem.description} className="w-full h-full object-cover" />
-              </div>
-            )}
+            <div className="w-full aspect-video overflow-hidden">
+              <ItemPhoto
+                photoUrl={detailItem.photo_url}
+                isSensitive={(detailItem as any).sensitive === true}
+                alt={detailItem.description}
+                className="w-full h-full"
+              />
+            </div>
 
             <div className="p-5 space-y-4">
               <h2 className="text-lg font-bold text-slate-900">{detailItem.description}</h2>

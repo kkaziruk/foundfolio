@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, MapPin, Tag, Calendar, CheckCircle, ArrowRight, Circle, X, Copy, Check } from "lucide-react";
 import { Item, supabase } from "../lib/supabase";
+import ItemPhoto from "./ItemPhoto";
 
 interface ItemDetailProps {
   item: Item;
@@ -79,22 +80,14 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
           style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04)" }}
         >
           {/* Image */}
-          {item.photo_url ? (
-            <div className="w-full aspect-[4/3] overflow-hidden bg-slate-100">
-              <img
-                src={item.photo_url}
-                alt={item.description}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-full aspect-[4/3] bg-slate-100 flex flex-col items-center justify-center gap-2">
-              <div className="w-16 h-16 rounded-2xl bg-slate-200 flex items-center justify-center">
-                <Tag className="w-8 h-8 text-slate-400" />
-              </div>
-              <span className="text-xs text-slate-400 font-medium">No photo</span>
-            </div>
-          )}
+          <div className="w-full aspect-[4/3] overflow-hidden">
+            <ItemPhoto
+              photoUrl={item.photo_url}
+              isSensitive={(item as any).sensitive === true}
+              alt={item.description}
+              className="w-full h-full"
+            />
+          </div>
 
           {/* Content */}
           <div className="p-5 sm:p-7">
