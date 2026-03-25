@@ -116,7 +116,7 @@ export default function AdminSettings({
               <Settings className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="text-base font-bold text-slate-900">Campus settings</p>
+              <p className="text-base font-bold text-slate-900">Campus Settings</p>
               <p className="text-xs text-slate-500 mt-0.5">{campusName}</p>
             </div>
           </div>
