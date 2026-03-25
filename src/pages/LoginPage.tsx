@@ -61,7 +61,7 @@ export default function LoginPage() {
             FoundFolio
           </h1>
           <p className="mt-3 text-sm md:text-base text-slate-600">
-            Lost something or managing a building? Choose how you're using FoundFolio.
+            Find lost items or log what you've found on campus
           </p>
         </div>
 
