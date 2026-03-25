@@ -60,8 +60,7 @@ export default function LoginPage() {
             Log in to FoundFolio
           </h1>
           <p className="mt-3 text-sm md:text-base text-slate-600">
-            Access your campus lost &amp; found dashboard. Choose your role to
-            continue.
+            Choose how you're using FoundFolio
           </p>
         </div>
 
