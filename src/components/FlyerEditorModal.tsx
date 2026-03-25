@@ -292,11 +292,11 @@ function generateFlyerHtml(
 }
 
 const DEFAULT_CUSTOM: CustomColors = {
-  headerBg: "#4c1d95",
-  stripBg: "#6d28d9",
-  accent: "#f0abfc",
-  stripText: "#ffffff",
-  bodyText: "#2e1065",
+  headerBg: "#0f172a",
+  stripBg: "#1d4ed8",
+  accent: "#fbbf24",
+  stripText: "#bfdbfe",
+  bodyText: "#0f172a",
 };
 
 function customToTheme(c: CustomColors): Theme {
