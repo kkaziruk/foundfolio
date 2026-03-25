@@ -709,7 +709,7 @@ useEffect(() => {
                           </div>
                         )}
                         {/* Status badge */}
-                        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold leading-tight ${item.status === "available" ? "bg-blue-500 text-white" : "bg-green-500 text-white"}`}>
+                        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold leading-tight ${item.status === "available" ? "bg-blue-500 text-white" : "bg-amber-400 text-white"}`}>
                           {item.status === "available" ? "Available" : "Claimed"}
                         </span>
                         {/* Amber flag */}
@@ -747,8 +747,8 @@ useEffect(() => {
                               <MoveRight className="w-4 h-4 text-slate-400" /> Transfer
                             </button>
                             {item.status === "available" && (
-                              <button onClick={() => { setOpenMenuId(null); openClaimModal(item); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-green-700 hover:bg-green-50 text-left">
-                                <CheckCircle className="w-4 h-4 text-green-500" /> Mark as Claimed
+                              <button onClick={() => { setOpenMenuId(null); openClaimModal(item); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 text-left">
+                                <CheckCircle className="w-4 h-4 text-amber-500" /> Mark as Claimed
                               </button>
                             )}
                             <div className="my-1 border-t border-slate-100" />
@@ -824,7 +824,7 @@ useEffect(() => {
                                 Available
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 border border-green-200 text-green-700 rounded-full text-xs font-semibold">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-xs font-semibold">
                                 <CheckCircle className="w-3 h-3" />
                                 Claimed
                               </span>
@@ -883,9 +883,9 @@ useEffect(() => {
                               {item.status === "available" && (
                                 <button
                                   onClick={() => { setOpenMenuId(null); openClaimModal(item); }}
-                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-green-700 hover:bg-green-50 transition-colors text-left"
+                                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-amber-700 hover:bg-amber-50 transition-colors text-left"
                                 >
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                  <CheckCircle className="w-4 h-4 text-amber-500" />
                                   Mark as Claimed
                                 </button>
                               )}
@@ -1175,7 +1175,7 @@ useEffect(() => {
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 sticky top-0 bg-white z-10">
               <div className="flex items-center gap-2.5">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${detailItem.status === "available" ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${detailItem.status === "available" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
                   {detailItem.status === "available" ? "Available" : "Claimed"}
                 </span>
                 <span className="text-sm font-medium text-slate-500">{detailItem.category}</span>
@@ -1219,7 +1219,7 @@ useEffect(() => {
                 <div className="pt-2">
                   <button
                     onClick={() => { setDetailItem(null); openClaimModal(detailItem); }}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white bg-green-600 hover:bg-green-700 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors"
                   >
                     <CheckCircle className="w-4 h-4" />
                     Mark as Claimed

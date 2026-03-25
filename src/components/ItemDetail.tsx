@@ -101,7 +101,7 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
             {/* Status badge */}
             <div className="flex items-center gap-2 mb-3">
               {isClaimed ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                   <CheckCircle className="w-3 h-3" />
                   Claimed
                 </span>
@@ -209,14 +209,14 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
             )}
 
             {isClaimed && (
-              <div className="mt-6 rounded-xl bg-green-50 border border-green-100 p-4">
+              <div className="mt-6 rounded-xl bg-amber-50 border border-amber-100 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-4 h-4 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-green-900">This item has been claimed</p>
-                    <p className="text-xs text-green-700 mt-0.5">The owner has already picked it up.</p>
+                    <p className="text-sm font-bold text-amber-900">This item has been claimed</p>
+                    <p className="text-xs text-amber-700 mt-0.5">The owner has already picked it up.</p>
                   </div>
                 </div>
               </div>

@@ -476,7 +476,7 @@ export default function AdminDashboard({ campus, building }: AdminDashboardProps
                           <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">{r.items_available}</span>
                         </td>
                         <td className="py-3 pr-4">
-                          <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">{r.items_picked_up}</span>
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold">{r.items_picked_up}</span>
                         </td>
                         <td className="py-3 pr-4 text-slate-600">{fmtPct01(r.pickup_rate)}</td>
                         <td className="py-3 pr-4 text-slate-600">{fmtHours(r.avg_hours_to_pickup)}</td>
