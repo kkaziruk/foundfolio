@@ -19,6 +19,46 @@ type CategoryRow = {
   is_sensitive: boolean;
 };
 
+const SYSTEM_PROMPT = `You are helping a university lost-and-found office catalog found items.
+
+Return ONLY raw JSON — no markdown, no backticks:
+{
+  "description": string,
+  "category_name": string,
+  "high_value_detected": boolean,
+  "sensitive_detected": boolean
+}
+
+DESCRIPTION
+- 5–10 words describing physical appearance: color, material, shape, brand if clearly visible.
+- Never include names, ID numbers, or personal identifiers even if visible in the photo.
+- Example: "Blue hard-shell laptop case with stickers"
+
+CATEGORY
+- category_name MUST match one of the allowed categories exactly.
+- If none clearly apply, use "Other / Unclassified".
+
+SENSITIVE — set sensitive_detected = true ONLY if the item itself IS one of:
+- A government-issued ID: driver's license, passport, or state ID card
+- A university or employee ID card
+- A financial card: credit card or debit card
+- A building access badge or key card
+- A Social Security card or similar official personal document
+Do NOT flag as sensitive:
+- Items that merely have a barcode, QR code, or product label (water bottles, books, food containers)
+- Items with a name written or printed on them (e.g. a labeled bottle or personalized item)
+- Loyalty cards, gift cards, library cards, or transit passes
+- Bags, wallets, or cases that may contain cards inside — only flag if an ID or financial card is visibly exposed
+
+HIGH VALUE — set high_value_detected = true for:
+- Electronics: phones, laptops, tablets, earbuds, headphones, cameras
+- Wallets and purses
+- Jewelry and watches
+- Car keys or key fobs
+- Any item clearly worth $50 or more
+
+OUTPUT: Raw JSON only. No markdown. No explanation.`;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -34,13 +74,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Supabase (service role)
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch categories
     const { data: categories, error } = await supabase
       .from("categories")
       .select("name,is_high_value,is_sensitive")
@@ -64,44 +102,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // FINAL prompt
-    const systemPrompt = `
-You are helping a university lost-and-found office.
-
-Return ONLY raw JSON with keys:
-{
-  "description": string,             // 5–8 words, physical traits only (color, material, form)
-  "category_name": string,           // MUST exactly match one of the allowed categories
-  "high_value_detected": boolean,    // true for electronics, wallets, jewelry, watches, headphones, etc.
-  "sensitive_detected": boolean      // true if item appears to contain personal identification
-}
-
-Rules:
-1. Category Choice:
-   - category_name MUST be chosen EXACTLY from the allowed categories list.
-   - If none clearly apply, choose "Other / Unclassified".
-
-2. Sensitive Detection:
-   - If the item shows a person’s photo, name, barcode, QR code, magnetic stripe,
-     or appears to be an ID card, license, passport, or access card,
-     you MUST set sensitive_detected = true.
-
-3. High-Value Detection:
-   - Set high_value_detected = true for electronics, wallets, jewelry, watches,
-     headphones, or similarly valuable personal items.
-
-4. Privacy:
-   - If sensitive_detected is true, the description MUST NOT include any names,
-     numbers, IDs, or personal identifiers.
-
-5. Output:
-   - No markdown.
-   - No backticks.
-   - Raw JSON only.
-`;
-
-    const userText = `Allowed categories: ${names.join(", ")}`;
-
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -113,11 +113,11 @@ Rules:
         temperature: 0.1,
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
             content: [
-              { type: "text", text: userText },
+              { type: "text", text: `Allowed categories: ${names.join(", ")}` },
               { type: "image_url", image_url: { url: imageUrl } },
             ],
           },
@@ -147,19 +147,13 @@ Rules:
     const highValueDetected = parsed.high_value_detected === true;
     const sensitiveDetected = parsed.sensitive_detected === true;
 
-    const categoryRow = categories.find(
-      (c: CategoryRow) => c.name === proposedCategory
-    );
-
+    const categoryRow = categories.find((c: CategoryRow) => c.name === proposedCategory);
     const finalCategory = categoryRow
       ? proposedCategory
       : names.includes(OTHER)
       ? OTHER
       : names[0];
-
-    const finalRow = categories.find(
-      (c: CategoryRow) => c.name === finalCategory
-    )!;
+    const finalRow = categories.find((c: CategoryRow) => c.name === finalCategory)!;
 
     return new Response(
       JSON.stringify({

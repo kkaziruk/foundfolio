@@ -17,6 +17,46 @@ function json(body: unknown, status = 200) {
 
 type CategoryRow = { name: string; is_high_value: boolean; is_sensitive: boolean };
 
+const SYSTEM_PROMPT = `You are helping a university lost-and-found office catalog found items.
+
+Return ONLY raw JSON — no markdown, no backticks:
+{
+  "description": string,
+  "category_name": string,
+  "high_value_detected": boolean,
+  "sensitive_detected": boolean
+}
+
+DESCRIPTION
+- 5–10 words describing physical appearance: color, material, shape, brand if clearly visible.
+- Never include names, ID numbers, or personal identifiers even if visible in the photo.
+- Example: "Blue hard-shell laptop case with stickers"
+
+CATEGORY
+- category_name MUST match one of the allowed categories exactly.
+- If none clearly apply, use "Other / Unclassified".
+
+SENSITIVE — set sensitive_detected = true ONLY if the item itself IS one of:
+- A government-issued ID: driver's license, passport, or state ID card
+- A university or employee ID card
+- A financial card: credit card or debit card
+- A building access badge or key card
+- A Social Security card or similar official personal document
+Do NOT flag as sensitive:
+- Items that merely have a barcode, QR code, or product label (water bottles, books, food containers)
+- Items with a name written or printed on them (e.g. a labeled bottle or personalized item)
+- Loyalty cards, gift cards, library cards, or transit passes
+- Bags, wallets, or cases that may contain cards inside — only flag if an ID or financial card is visibly exposed
+
+HIGH VALUE — set high_value_detected = true for:
+- Electronics: phones, laptops, tablets, earbuds, headphones, cameras
+- Wallets and purses
+- Jewelry and watches
+- Car keys or key fobs
+- Any item clearly worth $50 or more
+
+OUTPUT: Raw JSON only. No markdown. No explanation.`;
+
 async function enrichWithAI(
   reportId: string,
   campusSlug: string,
@@ -42,21 +82,6 @@ async function enrichWithAI(
   const names = (categories as CategoryRow[]).map((c) => c.name);
   const OTHER = "Other / Unclassified";
 
-  const systemPrompt = `You are helping a university lost-and-found office.
-Return ONLY raw JSON with keys:
-{
-  "description": string,
-  "category_name": string,
-  "high_value_detected": boolean,
-  "sensitive_detected": boolean
-}
-Rules:
-1. category_name MUST be chosen exactly from the allowed categories list. If none apply, choose "Other / Unclassified".
-2. Set sensitive_detected = true if the item shows an ID, card, license, passport, barcode, or personal identifier.
-3. Set high_value_detected = true for electronics, wallets, jewelry, watches, headphones, or similarly valuable items.
-4. If sensitive_detected is true, the description must NOT include any names, numbers, or personal identifiers.
-5. No markdown. No backticks. Raw JSON only.`;
-
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -68,7 +93,7 @@ Rules:
       temperature: 0.1,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
           content: [
@@ -137,7 +162,6 @@ Deno.serve(async (req: Request) => {
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Step 1: Authenticate caller
     const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -149,7 +173,6 @@ Deno.serve(async (req: Request) => {
 
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Step 2: Rate limit check
     const oneHourAgo = new Date(Date.now() - 3_600_000).toISOString();
     const oneDayAgo = new Date(Date.now() - 86_400_000).toISOString();
 
@@ -173,7 +196,6 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Daily submission limit reached. Try again tomorrow." }, 429);
     }
 
-    // Step 3: Validate building exists and belongs to this campus
     const { data: building, error: buildingErr } = await adminClient
       .from("buildings")
       .select("id, name, campus_slug")
@@ -185,7 +207,6 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid building for this campus" }, 400);
     }
 
-    // Step 4: Insert report — this must succeed before AI runs
     const { data: report, error: insertErr } = await adminClient
       .from("found_item_reports")
       .insert({
@@ -206,8 +227,6 @@ Deno.serve(async (req: Request) => {
 
     const reportId = report.id;
 
-    // Step 5: AI enrichment — awaited but non-blocking in the sense that
-    // failure here does NOT affect the response. Report is already in DB.
     try {
       await enrichWithAI(reportId, campus_slug, photo_url, adminClient);
     } catch (aiErr) {
