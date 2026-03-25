@@ -224,7 +224,8 @@ export default function AdminPage() {
   const shareUrl = `${window.location.origin}/search/${campus}`;
 
   const handleMakeFlyer = useCallback(() => {
-    const qrHiRes = `https://api.qrserver.com/v1/create-qr-code/?size=700x700&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=0f172a&margin=1`;
+    const flyerUrl = "https://www.foundfolio.co/login";
+    const qrHiRes = `https://api.qrserver.com/v1/create-qr-code/?size=700x700&data=${encodeURIComponent(flyerUrl)}&bgcolor=ffffff&color=0f172a&margin=1`;
 
     const buildingLine = isBuildingManager && selectedBuilding
       ? selectedBuilding.name
@@ -421,7 +422,7 @@ export default function AdminPage() {
         <span class="or-text">or visit</span>
         <span class="or-line"></span>
       </div>
-      <span class="url-chip">${shareUrl.replace(/^https?:\/\/[^/]+/, '')}</span>
+      <span class="url-chip">foundfolio.co/login</span>
     </div>
 
     <!-- Yellow accent + dark footer -->
