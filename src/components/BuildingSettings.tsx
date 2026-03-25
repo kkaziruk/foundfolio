@@ -93,7 +93,7 @@ export default function BuildingSettings({ buildingId, buildingName, onClose }: 
                 <div className="flex items-center gap-2 mb-1.5">
                   <Clock className="w-4 h-4 text-slate-400" />
                   <label className="text-sm font-semibold text-slate-800">
-                    Lost &amp; Found hours
+                    Lost &amp; Found Hours
                   </label>
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
