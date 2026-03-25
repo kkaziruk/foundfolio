@@ -118,11 +118,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <p className="mt-5 text-xs text-slate-400 text-center">
-              Secure sign in · Campus access only
-            </p>
-
-            <div className="mt-4 text-center space-y-1.5">
+            <div className="mt-5 text-center space-y-1.5">
               <p className="text-xs text-slate-400">
                 New here?{" "}
                 <Link to="/about" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
