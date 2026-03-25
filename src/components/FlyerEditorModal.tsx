@@ -191,12 +191,26 @@ function generateFlyerHtml(
     }
     .footer-left { font-size: 12px; font-weight: 600; color: white; }
     .footer-right { font-size: 11px; color: #64748b; }
+    @page {
+      size: A4;
+      margin: 0;
+    }
     @media print {
-      html, body { background: white; padding: 0; }
+      html, body {
+        background: white; padding: 0; margin: 0;
+        width: 100%; height: 100%;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
       .print-bar { display: none; }
-      .flyer { border-radius: 0; box-shadow: none; max-width: 100%; }
-      .headline { font-size: 64px; }
-      .qr-wrap img { width: 260px; height: 260px; }
+      .flyer {
+        border-radius: 0; box-shadow: none;
+        width: 100%; max-width: 100%;
+        min-height: 100vh;
+      }
+      .headline { font-size: 68px; }
+      .body { padding: 52px 56px 48px; }
+      .qr-wrap img { width: 280px; height: 280px; }
     }
   </style>
 </head>
