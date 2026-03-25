@@ -421,7 +421,7 @@ export default function AdminPage() {
         <span class="or-text">or visit</span>
         <span class="or-line"></span>
       </div>
-      <span class="url-chip">${shareUrl}</span>
+      <span class="url-chip">${shareUrl.replace(/^https?:\/\/[^/]+/, '')}</span>
     </div>
 
     <!-- Yellow accent + dark footer -->
