@@ -118,7 +118,7 @@ useEffect(() => {
       .maybeSingle();
 
     if (error) {
-      console.error("EXPORT CHECK failed:", error);
+      console.error("Failed to check export permissions:", error);
       return;
     }
 

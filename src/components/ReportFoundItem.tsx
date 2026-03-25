@@ -56,7 +56,6 @@ export default function ReportFoundItem({ campus, onClose }: Props) {
         .select("id, name")
         .eq("campus_slug", campus)
         .order("name");
-      console.log("[ReportFoundItem] buildings query:", { campus, count: data?.length, error });
       setBuildings((data ?? []) as BuildingOption[]);
     };
     load();
