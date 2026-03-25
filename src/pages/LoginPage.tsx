@@ -109,7 +109,7 @@ export default function LoginPage() {
                       I want to log or manage items
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Log items, manage returns, and view analytics
+                      Add items, track returns, and manage your building
                     </p>
                   </div>
                   <span className="text-slate-300 group-hover:text-slate-400 transition-colors text-lg">→</span>
