@@ -107,7 +107,7 @@ export default function LoginPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-900 text-sm">
-                      I want to log or manage items
+                      Log items and manage buildings
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500">
                       Add items, track returns, and manage your building
