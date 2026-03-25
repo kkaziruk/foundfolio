@@ -60,6 +60,8 @@ export default function AdminPage() {
   const [showFlyerEditor, setShowFlyerEditor] = useState(false);
   const [bmPage, setBmPage] = useState(0);
   const bmSwipeRef = useRef<HTMLDivElement>(null);
+  const bmProgrammatic = useRef(false);
+  const bmScrollTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -461,10 +463,14 @@ export default function AdminPage() {
   useEffect(() => {
     const el = bmSwipeRef.current;
     if (!el) return;
+    bmProgrammatic.current = true;
     el.scrollTo({ left: bmPage * el.offsetWidth, behavior: "smooth" });
+    clearTimeout(bmScrollTimer.current);
+    bmScrollTimer.current = setTimeout(() => { bmProgrammatic.current = false; }, 450);
   }, [bmPage]);
 
   const handleBmScroll = useCallback(() => {
+    if (bmProgrammatic.current) return;
     const el = bmSwipeRef.current;
     if (!el) return;
     const page = Math.round(el.scrollLeft / el.offsetWidth);
@@ -888,10 +894,16 @@ export default function AdminPage() {
                         ref={bmSwipeRef}
                         onScroll={handleBmScroll}
                         className="flex overflow-x-auto snap-x snap-mandatory"
-                        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+                        style={{
+                          scrollbarWidth: "none",
+                          WebkitOverflowScrolling: "touch",
+                          height: "calc(100dvh - 260px)",
+                          minHeight: "420px",
+                          overscrollBehaviorX: "contain",
+                        } as React.CSSProperties}
                       >
                         {/* Page 0: Log */}
-                        <div className="snap-start flex-shrink-0 w-full">
+                        <div className="snap-start flex-shrink-0 w-full h-full overflow-y-auto">
                           <AddItemForm
                             onSuccess={handleItemAdded}
                             campus={campus}
@@ -899,7 +911,7 @@ export default function AdminPage() {
                           />
                         </div>
                         {/* Page 1: Items */}
-                        <div className="snap-start flex-shrink-0 w-full">
+                        <div className="snap-start flex-shrink-0 w-full h-full overflow-y-auto">
                           <ItemsList
                             refreshTrigger={refreshTrigger}
                             campus={campus}
@@ -907,7 +919,7 @@ export default function AdminPage() {
                           />
                         </div>
                         {/* Page 2: Flyer */}
-                        <div className="snap-start flex-shrink-0 w-full">
+                        <div className="snap-start flex-shrink-0 w-full h-full overflow-y-auto">
                           {flyerWidget}
                         </div>
                       </div>
