@@ -22,6 +22,7 @@ import ManageStaff from "../components/ManageStaff";
 import FoundReportsQueue from "../components/FoundReportsQueue";
 import BuildingSettings from "../components/BuildingSettings";
 import AdminSettings from "../components/AdminSettings";
+import FlyerEditorModal from "../components/FlyerEditorModal";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -54,6 +55,7 @@ export default function AdminPage() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminSettings, setShowAdminSettings] = useState(false);
+  const [showFlyerEditor, setShowFlyerEditor] = useState(false);
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -721,7 +723,7 @@ export default function AdminPage() {
 
                         {/* Flyer button */}
                         <button
-                          onClick={handleMakeFlyer}
+                          onClick={() => setShowFlyerEditor(true)}
                           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 active:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-colors"
                         >
                           <Printer className="w-4 h-4" />
@@ -831,6 +833,14 @@ export default function AdminPage() {
             setAdminView("buildings");
             setSelectedBuildingId(ALL_BUILDINGS_ID);
           }}
+        />
+      )}
+
+      {showFlyerEditor && (
+        <FlyerEditorModal
+          buildingLine={isBuildingManager && selectedBuilding ? selectedBuilding.name : campusName}
+          logoUrl={`${window.location.origin}/found_folio_(6).png`}
+          onClose={() => setShowFlyerEditor(false)}
         />
       )}
     </div>
