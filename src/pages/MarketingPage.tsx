@@ -69,6 +69,22 @@ const MarketingPage = () => {
         notes: form.notes.trim() || null,
       });
       if (error) throw error;
+
+      // Fire notification email (best-effort — don't block submission on failure)
+      try {
+        await supabase.functions.invoke("notify-pilot-request", {
+          body: {
+            name: form.name.trim(),
+            email: form.email.trim(),
+            university: form.university.trim(),
+            locations: form.locations.trim() || null,
+            notes: form.notes.trim() || null,
+          },
+        });
+      } catch {
+        // silent — notification failure shouldn't surface to the user
+      }
+
       setSubmitted(true);
     } catch {
       setFormError("Something went wrong. Please email us directly at hello@foundfolio.co");
