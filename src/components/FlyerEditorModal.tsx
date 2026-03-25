@@ -71,6 +71,17 @@ interface Props {
 const FLYER_URL = "https://www.foundfolio.co/login";
 const FLYER_URL_DISPLAY = "foundfolio.co/login";
 
+async function fetchAsDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 function generateFlyerHtml(
   config: FlyerConfig,
   theme: Theme,
@@ -78,8 +89,11 @@ function generateFlyerHtml(
   buildingLine: string,
   logoUrl: string,
   preview = false,
+  qrSrc?: string,
+  logoSrc?: string,
 ): string {
-  const qrHiRes = `https://api.qrserver.com/v1/create-qr-code/?size=700x700&data=${encodeURIComponent(FLYER_URL)}&bgcolor=ffffff&color=0f172a&margin=1`;
+  const qrHiRes = qrSrc ?? `https://api.qrserver.com/v1/create-qr-code/?size=700x700&data=${encodeURIComponent(FLYER_URL)}&bgcolor=ffffff&color=0f172a&margin=1`;
+  const resolvedLogoUrl = logoSrc ?? logoUrl;
   const fontFamily = `'${config.font}', -apple-system, BlinkMacSystemFont, sans-serif`;
   const fontImport = font.import ? `@import url('${font.import}');` : `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');`;
 
@@ -119,6 +133,10 @@ function generateFlyerHtml(
       border-radius: ${preview ? "0" : "20px"};
       overflow: hidden;
       box-shadow: ${preview ? "none" : "0 8px 40px rgba(0,0,0,0.18)"};
+    }
+    .header, .campus-strip, .footer, .footer-accent, .header-badge {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .header {
       background: ${theme.headerBg};
@@ -222,7 +240,7 @@ function generateFlyerHtml(
   <div class="flyer">
     <div class="header">
       <div class="header-brand">
-        ${config.showLogo ? `<img src="${logoUrl}" alt="FoundFolio" class="header-logo" />` : ""}
+        ${config.showLogo ? `<img src="${resolvedLogoUrl}" alt="FoundFolio" class="header-logo" />` : ""}
         <span class="header-name">FoundFolio</span>
       </div>
       <span class="header-badge">Lost &amp; Found</span>
@@ -272,13 +290,25 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
     [config, theme, font, buildingLine, logoUrl],
   );
 
-  const handlePrint = () => {
-    const printHtml = generateFlyerHtml(config, theme, font, buildingLine, logoUrl, false);
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(printHtml);
-    win.document.close();
-    setTimeout(() => win.print(), 800);
+  const [printing, setPrinting] = useState(false);
+
+  const handlePrint = async () => {
+    setPrinting(true);
+    try {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=700x700&data=${encodeURIComponent(FLYER_URL)}&bgcolor=ffffff&color=0f172a&margin=1`;
+      const [qrSrc, logoSrc] = await Promise.all([
+        fetchAsDataUrl(qrUrl),
+        fetchAsDataUrl(logoUrl).catch(() => logoUrl),
+      ]);
+      const printHtml = generateFlyerHtml(config, theme, font, buildingLine, logoUrl, false, qrSrc, logoSrc);
+      const win = window.open("", "_blank");
+      if (!win) return;
+      win.document.write(printHtml);
+      win.document.close();
+      setTimeout(() => win.print(), 400);
+    } finally {
+      setPrinting(false);
+    }
   };
 
   return (
@@ -396,10 +426,11 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
         <div className="p-5 border-t border-slate-100 flex-shrink-0">
           <button
             onClick={handlePrint}
-            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-slate-800 active:bg-black transition-colors"
+            disabled={printing}
+            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-slate-800 active:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Printer className="w-4 h-4" />
-            Print / Save as PDF
+            {printing ? "Preparing…" : "Print / Save as PDF"}
           </button>
         </div>
       </div>
