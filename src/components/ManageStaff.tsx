@@ -76,8 +76,18 @@ export default function ManageStaff({ campus, buildings }: { campus: string; bui
 
       let emailSent = false;
       try {
+        const buildingName = role === "building_manager" && buildingId
+          ? (buildingNameById.get(buildingId) ?? undefined)
+          : undefined;
+
         const { error: fnErr } = await supabase.functions.invoke("invite-staff", {
-          body: { email: cleanEmail, campus_slug: campus },
+          body: {
+            email: cleanEmail,
+            campus_slug: campus,
+            campus_name: campus,
+            building_name: buildingName,
+            role,
+          },
         });
         if (fnErr) {
           console.warn("Invite email failed (invite record still saved):", fnErr.message);

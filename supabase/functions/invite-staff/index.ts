@@ -21,7 +21,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { email, campus_slug } = await req.json();
+    const { email, campus_slug, campus_name, building_name, role } = await req.json();
 
     if (!email || !campus_slug) {
       return json({ error: "email and campus_slug are required" }, 400);
@@ -64,9 +64,8 @@ Deno.serve(async (req: Request) => {
     // Use service role to send the invite email
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // APP_URL must be set in Supabase project secrets (e.g. https://yourapp.vercel.app)
     const APP_URL = Deno.env.get("APP_URL") ?? SUPABASE_URL;
-    const redirectTo = `${APP_URL}/reset-password`;
+    const redirectTo = `${APP_URL}/reset-password?type=invite`;
 
     const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
       redirectTo,
@@ -76,6 +75,53 @@ Deno.serve(async (req: Request) => {
     if (error) {
       console.error("inviteUserByEmail error:", error);
       return json({ error: error.message }, 400);
+    }
+
+    // Send a context-rich welcome email via Resend if configured
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (RESEND_API_KEY) {
+      const roleLabel = role === "campus_admin" ? "Campus Admin" : "Building Manager";
+      const locationLine = building_name
+        ? `<p style="margin:0 0 8px;">📍 <strong>Building:</strong> ${building_name}</p>`
+        : "";
+      const campusLine = campus_name
+        ? `<p style="margin:0 0 8px;">🏫 <strong>Campus:</strong> ${campus_name}</p>`
+        : "";
+
+      const html = `
+        <div style="font-family:sans-serif;max-width:520px;color:#1e293b;">
+          <img src="${APP_URL}/found_folio_(6).png" alt="FoundFolio" style="height:40px;margin-bottom:24px;" />
+          <h2 style="margin:0 0 8px;font-size:20px;">You've been invited to FoundFolio</h2>
+          <p style="margin:0 0 20px;color:#475569;">You're set up as a <strong>${roleLabel}</strong> on FoundFolio — the campus lost &amp; found platform.</p>
+          ${campusLine}
+          ${locationLine}
+          <p style="margin:0 0 20px;color:#475569;">Click the button below to create your password and get started. The link expires in 24 hours.</p>
+          <p style="margin:0 0 32px;">
+            <a href="${APP_URL}/reset-password?type=invite" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">
+              Set up my account →
+            </a>
+          </p>
+          <p style="margin:0;font-size:12px;color:#94a3b8;">If you weren't expecting this, you can safely ignore it.</p>
+        </div>
+      `;
+
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "FoundFolio <noreply@foundfolio.co>",
+            to: [email],
+            subject: `You've been invited to manage ${building_name ?? campus_name ?? "lost & found"} on FoundFolio`,
+            html,
+          }),
+        });
+      } catch (emailErr) {
+        console.warn("Resend email failed (invite still sent):", emailErr);
+      }
     }
 
     return json({ success: true, user_id: data?.user?.id });
