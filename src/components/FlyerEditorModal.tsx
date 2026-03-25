@@ -18,6 +18,16 @@ interface Theme {
   stripBg: string;
   accent: string;
   stripText: string;
+  bodyText: string;
+  accentText: string;
+}
+
+interface CustomColors {
+  headerBg: string;
+  stripBg: string;
+  accent: string;
+  stripText: string;
+  bodyText: string;
 }
 
 const THEMES: Theme[] = [
@@ -28,6 +38,8 @@ const THEMES: Theme[] = [
     stripBg: "#1d4ed8",
     accent: "#fbbf24",
     stripText: "#bfdbfe",
+    bodyText: "#0f172a",
+    accentText: "#0f172a",
   },
   {
     id: "notre-dame",
@@ -36,6 +48,8 @@ const THEMES: Theme[] = [
     stripBg: "#102672",
     accent: "#c99700",
     stripText: "#c8d8f0",
+    bodyText: "#0c2340",
+    accentText: "#0c2340",
   },
   {
     id: "minimal",
@@ -44,14 +58,18 @@ const THEMES: Theme[] = [
     stripBg: "#475569",
     accent: "#94a3b8",
     stripText: "#e2e8f0",
+    bodyText: "#1e293b",
+    accentText: "#1e293b",
   },
   {
-    id: "forest",
-    label: "Forest",
-    headerBg: "#14532d",
-    stripBg: "#166534",
-    accent: "#86efac",
-    stripText: "#bbf7d0",
+    id: "emerald",
+    label: "Emerald",
+    headerBg: "#022c22",
+    stripBg: "#064e3b",
+    accent: "#fbbf24",
+    stripText: "#6ee7b7",
+    bodyText: "#022c22",
+    accentText: "#022c22",
   },
 ];
 
@@ -153,7 +171,7 @@ function generateFlyerHtml(
       font-family: ${fontFamily};
     }
     .header-badge {
-      background: ${theme.accent}; color: #0f172a;
+      background: ${theme.accent}; color: ${theme.accentText};
       font-size: 11px; font-weight: 700;
       padding: 4px 12px; border-radius: 100px;
     }
@@ -170,7 +188,7 @@ function generateFlyerHtml(
     .body { flex: 1; padding: 44px 40px 40px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .headline {
       font-size: 56px; font-weight: 900;
-      color: #0f172a; line-height: 1.0;
+      color: ${theme.bodyText}; line-height: 1.0;
       letter-spacing: -2.5px; margin-bottom: 12px;
       font-family: ${fontFamily};
     }
@@ -273,6 +291,27 @@ function generateFlyerHtml(
 </html>`;
 }
 
+const DEFAULT_CUSTOM: CustomColors = {
+  headerBg: "#0f172a",
+  stripBg: "#2563eb",
+  accent: "#fbbf24",
+  stripText: "#ffffff",
+  bodyText: "#0f172a",
+};
+
+function customToTheme(c: CustomColors): Theme {
+  return {
+    id: "custom",
+    label: "Custom",
+    headerBg: c.headerBg,
+    stripBg: c.stripBg,
+    accent: c.accent,
+    stripText: c.stripText,
+    bodyText: c.bodyText,
+    accentText: "#0f172a",
+  };
+}
+
 export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Props) {
   const [config, setConfig] = useState<FlyerConfig>({
     headline: "Lost something?",
@@ -284,15 +323,20 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
     showCampusStrip: true,
   });
 
-  const theme = THEMES.find(t => t.id === config.theme) ?? THEMES[0];
+  const [customColors, setCustomColors] = useState<CustomColors>(DEFAULT_CUSTOM);
+  const [printing, setPrinting] = useState(false);
+
+  const effectiveTheme: Theme =
+    config.theme === "custom"
+      ? customToTheme(customColors)
+      : THEMES.find(t => t.id === config.theme) ?? THEMES[0];
+
   const font = FONTS.find(f => f.id === config.font) ?? FONTS[0];
 
   const previewHtml = useMemo(
-    () => generateFlyerHtml(config, theme, font, buildingLine, logoUrl, true),
-    [config, theme, font, buildingLine, logoUrl],
+    () => generateFlyerHtml(config, effectiveTheme, font, buildingLine, logoUrl, true),
+    [config, effectiveTheme, font, buildingLine, logoUrl],
   );
-
-  const [printing, setPrinting] = useState(false);
 
   const handlePrint = async () => {
     setPrinting(true);
@@ -302,7 +346,7 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
         fetchAsDataUrl(qrUrl),
         fetchAsDataUrl(logoUrl).catch(() => logoUrl),
       ]);
-      const printHtml = generateFlyerHtml(config, theme, font, buildingLine, logoUrl, false, qrSrc, logoSrc);
+      const printHtml = generateFlyerHtml(config, effectiveTheme, font, buildingLine, logoUrl, false, qrSrc, logoSrc);
       const win = window.open("", "_blank");
       if (!win) return;
       win.document.write(printHtml);
@@ -312,6 +356,20 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
       setPrinting(false);
     }
   };
+
+  const colorSwatchBtn = (id: string, t: { headerBg: string; stripBg: string; accent: string }) => (
+    <button
+      key={id}
+      onClick={() => setConfig(c => ({ ...c, theme: id }))}
+      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${config.theme === id ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200" : "border-slate-200 hover:border-slate-300"}`}
+    >
+      <div className="flex gap-px flex-shrink-0 rounded overflow-hidden">
+        <div className="w-4 h-6" style={{ background: t.headerBg }} />
+        <div className="w-4 h-6" style={{ background: t.stripBg }} />
+        <div className="w-4 h-6" style={{ background: t.accent }} />
+      </div>
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -359,22 +417,57 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
               <Palette className="w-3.5 h-3.5 text-slate-400" />
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Color theme</p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+
+            {/* Preset swatches */}
+            <div className="grid grid-cols-4 gap-2 mb-3">
               {THEMES.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setConfig(c => ({ ...c, theme: t.id }))}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${config.theme === t.id ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200" : "border-slate-200 hover:border-slate-300"}`}
-                >
-                  <div className="flex gap-px flex-shrink-0 rounded overflow-hidden">
-                    <div className="w-4 h-6" style={{ background: t.headerBg }} />
-                    <div className="w-4 h-6" style={{ background: t.stripBg }} />
-                    <div className="w-4 h-6" style={{ background: t.accent }} />
-                  </div>
-                  <span className="text-xs font-medium text-slate-700 leading-tight">{t.label}</span>
-                </button>
+                <div key={t.id} className="flex flex-col items-center gap-1">
+                  {colorSwatchBtn(t.id, t)}
+                  <span className="text-[10px] text-slate-500">{t.label}</span>
+                </div>
               ))}
+              {/* Custom swatch */}
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  onClick={() => setConfig(c => ({ ...c, theme: "custom" }))}
+                  className={`flex items-center justify-center w-full py-2.5 rounded-xl border transition-all ${config.theme === "custom" ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200" : "border-slate-200 hover:border-slate-300"}`}
+                  style={{ minWidth: 0 }}
+                >
+                  <div className="flex gap-px rounded overflow-hidden">
+                    <div className="w-4 h-6" style={{ background: customColors.headerBg }} />
+                    <div className="w-4 h-6" style={{ background: customColors.stripBg }} />
+                    <div className="w-4 h-6" style={{ background: customColors.accent }} />
+                  </div>
+                </button>
+                <span className="text-[10px] text-slate-500">Custom</span>
+              </div>
             </div>
+
+            {/* Custom color pickers — only shown when custom is selected */}
+            {config.theme === "custom" && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                {([
+                  ["headerBg", "Main color"],
+                  ["stripBg", "Secondary color"],
+                  ["accent", "Accent color"],
+                  ["stripText", "Text on strips"],
+                  ["bodyText", "Headline color"],
+                ] as [keyof CustomColors, string][]).map(([key, label]) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">{label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-slate-400">{customColors[key]}</span>
+                      <input
+                        type="color"
+                        value={customColors[key]}
+                        onChange={e => setCustomColors(c => ({ ...c, [key]: e.target.value }))}
+                        className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Font */}
