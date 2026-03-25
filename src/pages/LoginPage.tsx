@@ -86,7 +86,7 @@ export default function LoginPage() {
                     <GraduationCap className="w-5 h-5 text-blue-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-slate-900 text-sm">I'm looking for a lost item</div>
+                    <div className="font-semibold text-slate-900 text-sm">Search for lost item</div>
                     <p className="mt-0.5 text-xs text-slate-500">
                       Search everything found across campus
                     </p>
