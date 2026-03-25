@@ -67,7 +67,7 @@ const THEMES: Theme[] = [
     headerBg: "#022c22",
     stripBg: "#064e3b",
     accent: "#fbbf24",
-    stripText: "#6ee7b7",
+    stripText: "#ffffff",
     bodyText: "#022c22",
     accentText: "#022c22",
   },
@@ -292,11 +292,11 @@ function generateFlyerHtml(
 }
 
 const DEFAULT_CUSTOM: CustomColors = {
-  headerBg: "#0f172a",
-  stripBg: "#2563eb",
-  accent: "#fbbf24",
+  headerBg: "#4c1d95",
+  stripBg: "#6d28d9",
+  accent: "#f0abfc",
   stripText: "#ffffff",
-  bodyText: "#0f172a",
+  bodyText: "#2e1065",
 };
 
 function customToTheme(c: CustomColors): Theme {
@@ -326,10 +326,7 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
   const [customColors, setCustomColors] = useState<CustomColors>(DEFAULT_CUSTOM);
   const [printing, setPrinting] = useState(false);
 
-  const effectiveTheme: Theme =
-    config.theme === "custom"
-      ? customToTheme(customColors)
-      : THEMES.find(t => t.id === config.theme) ?? THEMES[0];
+  const effectiveTheme: Theme = customToTheme(customColors);
 
   const font = FONTS.find(f => f.id === config.font) ?? FONTS[0];
 
@@ -357,19 +354,10 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
     }
   };
 
-  const colorSwatchBtn = (id: string, t: { headerBg: string; stripBg: string; accent: string }) => (
-    <button
-      key={id}
-      onClick={() => setConfig(c => ({ ...c, theme: id }))}
-      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${config.theme === id ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200" : "border-slate-200 hover:border-slate-300"}`}
-    >
-      <div className="flex gap-px flex-shrink-0 rounded overflow-hidden">
-        <div className="w-4 h-6" style={{ background: t.headerBg }} />
-        <div className="w-4 h-6" style={{ background: t.stripBg }} />
-        <div className="w-4 h-6" style={{ background: t.accent }} />
-      </div>
-    </button>
-  );
+  const loadPreset = (t: Theme) => {
+    setCustomColors({ headerBg: t.headerBg, stripBg: t.stripBg, accent: t.accent, stripText: t.stripText, bodyText: t.bodyText });
+    setConfig(c => ({ ...c, theme: t.id }));
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -419,55 +407,50 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
             </div>
 
             {/* Preset swatches */}
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-4 gap-2 mb-4">
               {THEMES.map(t => (
                 <div key={t.id} className="flex flex-col items-center gap-1">
-                  {colorSwatchBtn(t.id, t)}
+                  <button
+                    onClick={() => loadPreset(t)}
+                    className={`flex items-center justify-center w-full py-2 rounded-xl border transition-all ${config.theme === t.id ? "border-blue-500 ring-1 ring-blue-200" : "border-slate-200 hover:border-slate-300"}`}
+                  >
+                    <div className="flex gap-px rounded overflow-hidden">
+                      <div className="w-4 h-6" style={{ background: t.headerBg }} />
+                      <div className="w-4 h-6" style={{ background: t.stripBg }} />
+                      <div className="w-4 h-6" style={{ background: t.accent }} />
+                    </div>
+                  </button>
                   <span className="text-[10px] text-slate-500">{t.label}</span>
                 </div>
               ))}
-              {/* Custom swatch */}
-              <div className="flex flex-col items-center gap-1">
-                <button
-                  onClick={() => setConfig(c => ({ ...c, theme: "custom" }))}
-                  className={`flex items-center justify-center w-full py-2.5 rounded-xl border transition-all ${config.theme === "custom" ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200" : "border-slate-200 hover:border-slate-300"}`}
-                  style={{ minWidth: 0 }}
-                >
-                  <div className="flex gap-px rounded overflow-hidden">
-                    <div className="w-4 h-6" style={{ background: customColors.headerBg }} />
-                    <div className="w-4 h-6" style={{ background: customColors.stripBg }} />
-                    <div className="w-4 h-6" style={{ background: customColors.accent }} />
-                  </div>
-                </button>
-                <span className="text-[10px] text-slate-500">Custom</span>
-              </div>
             </div>
 
-            {/* Custom color pickers — only shown when custom is selected */}
-            {config.theme === "custom" && (
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                {([
-                  ["headerBg", "Main color"],
-                  ["stripBg", "Secondary color"],
-                  ["accent", "Accent color"],
-                  ["stripText", "Text on strips"],
-                  ["bodyText", "Headline color"],
-                ] as [keyof CustomColors, string][]).map(([key, label]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <span className="text-xs text-slate-600">{label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-slate-400">{customColors[key]}</span>
-                      <input
-                        type="color"
-                        value={customColors[key]}
-                        onChange={e => setCustomColors(c => ({ ...c, [key]: e.target.value }))}
-                        className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5"
-                      />
-                    </div>
+            {/* Color pickers — always visible */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              {([
+                ["headerBg", "Main color"],
+                ["stripBg", "Secondary color"],
+                ["accent", "Accent color"],
+                ["stripText", "Strip text"],
+                ["bodyText", "Headline color"],
+              ] as [keyof CustomColors, string][]).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-slate-400">{customColors[key]}</span>
+                    <input
+                      type="color"
+                      value={customColors[key]}
+                      onChange={e => {
+                        setCustomColors(c => ({ ...c, [key]: e.target.value }));
+                        setConfig(c => ({ ...c, theme: "custom" }));
+                      }}
+                      className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+                    />
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </section>
 
           {/* Font */}
