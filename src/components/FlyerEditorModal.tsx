@@ -133,6 +133,8 @@ function generateFlyerHtml(
       border-radius: ${preview ? "0" : "20px"};
       overflow: hidden;
       box-shadow: ${preview ? "none" : "0 8px 40px rgba(0,0,0,0.18)"};
+      display: flex; flex-direction: column;
+      min-height: ${preview ? "100vh" : "auto"};
     }
     .header, .campus-strip, .footer, .footer-accent, .header-badge {
       -webkit-print-color-adjust: exact;
@@ -165,7 +167,7 @@ function generateFlyerHtml(
       color: ${theme.stripText};
     }
     .campus-strip span { color: white; margin-left: 6px; }
-    .body { padding: 44px 40px 40px; text-align: center; }
+    .body { flex: 1; padding: 44px 40px 40px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .headline {
       font-size: 56px; font-weight: 900;
       color: #0f172a; line-height: 1.0;
@@ -224,7 +226,7 @@ function generateFlyerHtml(
       .flyer {
         border-radius: 0; box-shadow: none;
         width: 100%; max-width: 100%;
-        min-height: 100vh;
+        height: 100vh; min-height: 100vh;
       }
       .headline { font-size: 68px; }
       .body { padding: 52px 56px 48px; }
