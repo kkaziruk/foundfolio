@@ -21,21 +21,31 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [claimHours, setClaimHours] = useState<string | null>(null);
+  const [policyNote, setPolicyNote] = useState<string | null>(null);
+  const [contactEmail, setContactEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const building = item.building;
     const campus = item.campus_slug;
     if (!building || !campus) return;
 
-    supabase
-      .from("buildings")
-      .select("claim_hours")
-      .eq("campus_slug", campus)
-      .eq("name", building)
-      .maybeSingle()
-      .then(({ data }) => {
-        setClaimHours(data?.claim_hours ?? null);
-      });
+    Promise.all([
+      supabase
+        .from("buildings")
+        .select("claim_hours")
+        .eq("campus_slug", campus)
+        .eq("name", building)
+        .maybeSingle(),
+      supabase
+        .from("campuses")
+        .select("policy_note,contact_email")
+        .eq("slug", campus)
+        .maybeSingle(),
+    ]).then(([buildingRes, campusRes]) => {
+      setClaimHours(buildingRes.data?.claim_hours ?? null);
+      setPolicyNote(campusRes.data?.policy_note ?? null);
+      setContactEmail(campusRes.data?.contact_email ?? null);
+    });
   }, [item.building, item.campus_slug]);
 
   const handleCopyLink = () => {
@@ -172,6 +182,17 @@ export default function ItemDetail({ item, onBack }: ItemDetailProps) {
                         <span className="text-xs text-blue-700">Items are held at the building's front desk</span>
                       </div>
                     </div>
+                    {policyNote && (
+                      <p className="text-xs text-blue-700 mt-3 pt-3 border-t border-blue-100 italic">{policyNote}</p>
+                    )}
+                    {contactEmail && (
+                      <a
+                        href={`mailto:${contactEmail}`}
+                        className="inline-block text-xs text-blue-600 underline mt-2 hover:text-blue-800"
+                      >
+                        Questions? Email {contactEmail}
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

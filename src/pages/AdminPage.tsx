@@ -21,6 +21,7 @@ import BuildingsManager from "../components/BuildingsManager";
 import ManageStaff from "../components/ManageStaff";
 import FoundReportsQueue from "../components/FoundReportsQueue";
 import BuildingSettings from "../components/BuildingSettings";
+import AdminSettings from "../components/AdminSettings";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
@@ -52,6 +53,7 @@ export default function AdminPage() {
   const [campusName, setCampusName] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAdminSettings, setShowAdminSettings] = useState(false);
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -228,6 +230,8 @@ export default function AdminPage() {
       ? selectedBuilding.name
       : campusName;
 
+    const logoUrl = `${window.location.origin}/found_folio_(6).png`;
+
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -235,81 +239,150 @@ export default function AdminPage() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FoundFolio Flyer — ${buildingLine}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; background: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-    body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 32px 20px 48px; }
+    html, body {
+      width: 100%; background: #e2e8f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      display: flex; flex-direction: column;
+      align-items: center; padding: 32px 20px 48px;
+    }
+
+    /* ── Print bar ── */
     .print-bar {
       display: flex; align-items: center; justify-content: space-between;
-      width: 100%; max-width: 540px; margin-bottom: 24px;
+      width: 100%; max-width: 520px; margin-bottom: 24px;
     }
-    .print-bar p { font-size: 13px; color: #94a3b8; }
+    .print-bar p { font-size: 13px; color: #64748b; }
     .print-btn {
       background: #0f172a; color: white; border: none;
       padding: 10px 22px; border-radius: 10px;
       font-size: 14px; font-weight: 600; cursor: pointer;
-      font-family: inherit; letter-spacing: -0.1px;
-      transition: opacity 0.15s;
+      font-family: inherit; transition: opacity 0.15s;
     }
-    .print-btn:hover { opacity: 0.85; }
+    .print-btn:hover { opacity: 0.82; }
+
+    /* ── Flyer shell ── */
     .flyer {
-      width: 100%; max-width: 540px;
+      width: 100%; max-width: 520px;
       background: white;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 28px;
-      padding: 60px 56px 52px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    }
+
+    /* ── Black header ── */
+    .header {
+      background: #0f172a;
+      padding: 28px 40px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-brand {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .header-logo {
+      width: 36px; height: 36px;
+      object-fit: contain;
+    }
+    .header-name {
+      font-size: 18px; font-weight: 800;
+      color: white; letter-spacing: -0.4px;
+    }
+    .header-badge {
+      background: #fbbf24; color: #0f172a;
+      font-size: 11px; font-weight: 700;
+      padding: 4px 12px; border-radius: 100px;
+      letter-spacing: 0.2px;
+    }
+
+    /* ── Blue campus strip ── */
+    .campus-strip {
+      background: #1d4ed8;
+      padding: 10px 40px;
+      display: flex; align-items: center; gap-8px;
+    }
+    .campus-strip p {
+      font-size: 13px; font-weight: 600;
+      color: #bfdbfe; letter-spacing: 0.1px;
+    }
+    .campus-strip span {
+      color: white; margin-left: 6px;
+    }
+
+    /* ── White body ── */
+    .body {
+      padding: 44px 40px 40px;
       text-align: center;
     }
-    .brand {
-      display: inline-flex; align-items: center; gap: 8px;
-      margin-bottom: 48px;
-    }
-    .brand-dot {
-      width: 10px; height: 10px;
-      background: #0f172a; border-radius: 50%;
-    }
-    .brand-name {
-      font-size: 15px; font-weight: 700; color: #0f172a;
-      letter-spacing: -0.2px;
-    }
     .headline {
-      font-size: 52px; font-weight: 900; color: #0f172a;
-      line-height: 1.0; letter-spacing: -2px;
-      margin-bottom: 14px;
+      font-size: 56px; font-weight: 900;
+      color: #0f172a; line-height: 1.0;
+      letter-spacing: -2.5px; margin-bottom: 12px;
     }
     .subhead {
-      font-size: 17px; color: #64748b; font-weight: 400;
-      line-height: 1.5; margin-bottom: 48px;
+      font-size: 16px; color: #64748b;
+      font-weight: 400; line-height: 1.55;
+      margin-bottom: 40px;
     }
-    .qr-box {
-      display: inline-flex; align-items: center; justify-content: center;
-      padding: 20px;
-      border: 2px solid #e2e8f0; border-radius: 24px;
-      margin-bottom: 32px;
+
+    /* ── QR code ── */
+    .qr-wrap {
+      display: inline-block;
+      padding: 16px;
+      border: 3px solid #2563eb;
+      border-radius: 20px;
+      margin-bottom: 36px;
+      background: white;
     }
-    .qr-box img { display: block; width: 240px; height: 240px; }
+    .qr-wrap img { display: block; width: 220px; height: 220px; }
+
+    /* ── OR divider ── */
     .or-row {
       display: flex; align-items: center; gap: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .or-line { flex: 1; height: 1px; background: #e2e8f0; }
-    .or-text { font-size: 11px; color: #94a3b8; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+    .or-text {
+      font-size: 10px; color: #94a3b8;
+      font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    /* ── URL chip ── */
     .url-chip {
       display: inline-block;
-      background: #f1f5f9; border-radius: 10px;
-      padding: 10px 18px;
-      font-size: 13px; font-family: monospace;
-      color: #475569; margin-bottom: 48px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 12px; font-family: monospace;
+      color: #475569;
     }
-    .footer-rule { width: 48px; height: 2px; background: #e2e8f0; margin: 0 auto 20px; }
-    .campus-label { font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 2px; }
-    .campus-sub { font-size: 12px; color: #94a3b8; }
+
+    /* ── Yellow footer accent ── */
+    .footer-accent {
+      background: #fbbf24;
+      height: 6px;
+    }
+    .footer {
+      background: #0f172a;
+      padding: 16px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer-left {
+      font-size: 12px; font-weight: 600; color: white;
+    }
+    .footer-right {
+      font-size: 11px; color: #64748b;
+    }
+
     @media print {
       html, body { background: white; padding: 0; }
       .print-bar { display: none; }
-      .flyer { border: none; border-radius: 0; max-width: 100%; padding: 48px 48px 40px; }
-      .headline { font-size: 60px; }
-      .qr-box img { width: 280px; height: 280px; }
+      .flyer { border-radius: 0; box-shadow: none; max-width: 100%; }
+      .headline { font-size: 64px; }
+      .qr-wrap img { width: 260px; height: 260px; }
     }
   </style>
 </head>
@@ -320,29 +393,43 @@ export default function AdminPage() {
   </div>
 
   <div class="flyer">
-    <div class="brand">
-      <span class="brand-dot"></span>
-      <span class="brand-name">FoundFolio</span>
+    <!-- Black header -->
+    <div class="header">
+      <div class="header-brand">
+        <img src="${logoUrl}" alt="FoundFolio" class="header-logo" />
+        <span class="header-name">FoundFolio</span>
+      </div>
+      <span class="header-badge">Lost &amp; Found</span>
     </div>
 
-    <p class="headline">Lost something?</p>
-    <p class="subhead">Scan to see if your item has<br>been turned in to lost &amp; found.</p>
-
-    <div class="qr-box">
-      <img src="${qrHiRes}" alt="QR code" />
+    <!-- Blue campus strip -->
+    <div class="campus-strip">
+      <p>Campus:<span>${buildingLine}</span></p>
     </div>
 
-    <div class="or-row">
-      <span class="or-line"></span>
-      <span class="or-text">or visit</span>
-      <span class="or-line"></span>
+    <!-- White body -->
+    <div class="body">
+      <p class="headline">Lost something?</p>
+      <p class="subhead">Scan below to see if your item has<br>been turned in to lost &amp; found.</p>
+
+      <div class="qr-wrap">
+        <img src="${qrHiRes}" alt="Scan to search FoundFolio" />
+      </div>
+
+      <div class="or-row">
+        <span class="or-line"></span>
+        <span class="or-text">or visit</span>
+        <span class="or-line"></span>
+      </div>
+      <span class="url-chip">${shareUrl}</span>
     </div>
 
-    <p class="url-chip">${shareUrl}</p>
-
-    <div class="footer-rule"></div>
-    <p class="campus-label">${buildingLine}</p>
-    <p class="campus-sub">Lost &amp; Found</p>
+    <!-- Yellow accent + dark footer -->
+    <div class="footer-accent"></div>
+    <div class="footer">
+      <span class="footer-left">${buildingLine} · Lost &amp; Found</span>
+      <span class="footer-right">Powered by FoundFolio</span>
+    </div>
   </div>
 </body>
 </html>`;
@@ -433,6 +520,17 @@ export default function AdminPage() {
                 className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 aria-label="Building settings"
                 title="Building settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
+
+            {isCampusAdmin && (
+              <button
+                onClick={() => setShowAdminSettings(true)}
+                className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                aria-label="Campus settings"
+                title="Campus settings"
               >
                 <Settings className="w-4 h-4" />
               </button>
@@ -719,6 +817,18 @@ export default function AdminPage() {
           buildingId={profile.building_id}
           buildingName={selectedBuilding?.name ?? "Your building"}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showAdminSettings && isCampusAdmin && (
+        <AdminSettings
+          campus={campus}
+          campusName={campusName}
+          onClose={() => setShowAdminSettings(false)}
+          onNavigateToBuildings={() => {
+            setAdminView("buildings");
+            setSelectedBuildingId(ALL_BUILDINGS_ID);
+          }}
         />
       )}
     </div>
