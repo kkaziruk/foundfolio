@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Home,
@@ -13,6 +13,8 @@ import {
   Inbox,
   Settings,
   Printer,
+  PlusCircle,
+  List,
 } from "lucide-react";
 import AdminDashboard from "../components/AdminDashboard";
 import AddItemForm from "../components/AddItemForm";
@@ -56,6 +58,8 @@ export default function AdminPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminSettings, setShowAdminSettings] = useState(false);
   const [showFlyerEditor, setShowFlyerEditor] = useState(false);
+  const [bmPage, setBmPage] = useState(0);
+  const bmSwipeRef = useRef<HTMLDivElement>(null);
 
   const isBuildingManager = profile?.role === "building_manager";
   const isCampusAdmin = profile?.role === "campus_admin";
@@ -453,6 +457,20 @@ export default function AdminPage() {
     if (!isCampusAdmin && adminView === "staff") setAdminView("analytics");
   }, [isCampusAdmin, adminView]);
 
+  // Sync swipe container scroll position when bmPage changes via tab tap
+  useEffect(() => {
+    const el = bmSwipeRef.current;
+    if (!el) return;
+    el.scrollTo({ left: bmPage * el.offsetWidth, behavior: "smooth" });
+  }, [bmPage]);
+
+  const handleBmScroll = useCallback(() => {
+    const el = bmSwipeRef.current;
+    if (!el) return;
+    const page = Math.round(el.scrollLeft / el.offsetWidth);
+    setBmPage(p => (p !== page ? page : p));
+  }, []);
+
   // Loading states
   if (loading)
     return (
@@ -761,7 +779,7 @@ export default function AdminPage() {
             <>
               {/* Building manager: Items / Reports toggle */}
               {isBuildingManager && (
-                <div className="bg-white rounded-xl border border-slate-200 p-1.5 mb-0" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+                <div className="bg-white rounded-xl border border-slate-200 p-1.5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
                       onClick={() => setAdminView("analytics")}
@@ -789,78 +807,129 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Per-building intake */}
-              {adminView !== "reports" && (
-                <>
-                  <AddItemForm
-                    onSuccess={handleItemAdded}
-                    campus={campus}
-                    building={selectedBuildingNameForProps}
-                  />
-                  <ItemsList
-                    refreshTrigger={refreshTrigger}
-                    campus={campus}
-                    building={selectedBuildingNameForProps}
-                  />
-
-                  {/* Student Search Page + flyer (building manager) */}
-                  {(() => {
-                    const flyerUrl = "https://www.foundfolio.co/login";
-                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(flyerUrl)}&bgcolor=ffffff&color=0f172a&margin=2`;
-                    return (
-                      <div className="bg-white rounded-xl border border-slate-200 p-5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                            <Link2 className="w-3.5 h-3.5 text-blue-500" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">Student Search Page</p>
-                            <p className="text-xs text-slate-500">Share this link, print the QR code, or make a flyer to post around your building</p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200 px-3 py-2">
-                              <span className="text-xs text-slate-600 font-mono truncate flex-1">foundfolio.co/login</span>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(flyerUrl).then(() => {
-                                    setCopiedLink(true);
-                                    setTimeout(() => setCopiedLink(false), 2000);
-                                  });
-                                }}
-                                className="flex items-center gap-1.5 flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
-                              >
-                                {copiedLink ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                                {copiedLink ? "Copied!" : "Copy"}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex-shrink-0">
-                            <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
-                              <img
-                                src={qrUrl}
-                                alt="QR code for student search page"
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => setShowFlyerEditor(true)}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 active:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-colors"
-                        >
-                          <Printer className="w-4 h-4" />
-                          Make a printable flyer
-                        </button>
+              {adminView !== "reports" && (() => {
+                const flyerUrl = "https://www.foundfolio.co/login";
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(flyerUrl)}&bgcolor=ffffff&color=0f172a&margin=2`;
+                const flyerWidget = (
+                  <div className="bg-white rounded-xl border border-slate-200 p-5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <Link2 className="w-3.5 h-3.5 text-blue-500" />
                       </div>
-                    );
-                  })()}
-                </>
-              )}
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Student Search Page</p>
+                        <p className="text-xs text-slate-500">Share this link, print the QR code, or make a flyer to post around your building</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200 px-3 py-2">
+                          <span className="text-xs text-slate-600 font-mono truncate flex-1">foundfolio.co/login</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(flyerUrl).then(() => {
+                                setCopiedLink(true);
+                                setTimeout(() => setCopiedLink(false), 2000);
+                              });
+                            }}
+                            className="flex items-center gap-1.5 flex-shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            {copiedLink ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedLink ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white flex items-center justify-center">
+                          <img src={qrUrl} alt="QR code for student search page" className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowFlyerEditor(true)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 active:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Make a printable flyer
+                    </button>
+                  </div>
+                );
+
+                const BM_TABS = [
+                  { label: "Log Item", icon: <PlusCircle className="w-4 h-4 shrink-0" /> },
+                  { label: "All Items", icon: <List className="w-4 h-4 shrink-0" /> },
+                  { label: "Flyer", icon: <Printer className="w-4 h-4 shrink-0" /> },
+                ];
+
+                return (
+                  <>
+                    {/* ── MOBILE: 3-page swipe layout ── */}
+                    <div className="md:hidden space-y-3">
+                      {/* Sub-tab bar */}
+                      <div className="bg-white rounded-xl border border-slate-200 p-1" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
+                        <div className="grid grid-cols-3 gap-1">
+                          {BM_TABS.map((tab, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setBmPage(i)}
+                              className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                                bmPage === i ? "bg-blue-500 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"
+                              }`}
+                            >
+                              {tab.icon}
+                              <span>{tab.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Swipe container */}
+                      <div
+                        ref={bmSwipeRef}
+                        onScroll={handleBmScroll}
+                        className="flex overflow-x-auto snap-x snap-mandatory"
+                        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+                      >
+                        {/* Page 0: Log */}
+                        <div className="snap-start flex-shrink-0 w-full">
+                          <AddItemForm
+                            onSuccess={handleItemAdded}
+                            campus={campus}
+                            building={selectedBuildingNameForProps}
+                          />
+                        </div>
+                        {/* Page 1: Items */}
+                        <div className="snap-start flex-shrink-0 w-full">
+                          <ItemsList
+                            refreshTrigger={refreshTrigger}
+                            campus={campus}
+                            building={selectedBuildingNameForProps}
+                          />
+                        </div>
+                        {/* Page 2: Flyer */}
+                        <div className="snap-start flex-shrink-0 w-full">
+                          {flyerWidget}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── DESKTOP: stacked layout ── */}
+                    <div className="hidden md:space-y-6 md:block">
+                      <AddItemForm
+                        onSuccess={handleItemAdded}
+                        campus={campus}
+                        building={selectedBuildingNameForProps}
+                      />
+                      <ItemsList
+                        refreshTrigger={refreshTrigger}
+                        campus={campus}
+                        building={selectedBuildingNameForProps}
+                      />
+                      {flyerWidget}
+                    </div>
+                  </>
+                );
+              })()}
 
               {adminView === "reports" && isBuildingManager && (
                 <FoundReportsQueue
