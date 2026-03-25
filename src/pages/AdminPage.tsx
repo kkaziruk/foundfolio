@@ -683,7 +683,7 @@ export default function AdminPage() {
                             <Link2 className="w-3.5 h-3.5 text-blue-500" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-slate-900">Student search page</p>
+                            <p className="text-sm font-bold text-slate-900">Student Search Page</p>
                             <p className="text-xs text-slate-500">Share this link, print the QR code, or make a flyer to post around your building</p>
                           </div>
                         </div>
