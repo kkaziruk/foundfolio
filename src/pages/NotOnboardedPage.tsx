@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import { MapPin } from "lucide-react";
 
 export default function NotOnboardedPage() {
   const navigate = useNavigate();
@@ -29,27 +30,34 @@ export default function NotOnboardedPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-md p-6">
-        <h1 className="text-2xl font-semibold text-slate-900 mb-2">
-          Campus not supported
+      <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 p-8" style={{ boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.06)" }}>
+        <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center mb-5">
+          <MapPin className="w-6 h-6 text-amber-500" />
+        </div>
+
+        <h1 className="text-xl font-bold text-slate-900 mb-2">
+          Campus not found
         </h1>
-        <p className="text-sm text-slate-600 mb-4">
-          Your email domain <span className="font-medium">{domain}</span> isn’t linked to an active campus.
+        <p className="text-sm text-slate-500 mb-1">
+          Your email domain <span className="font-semibold text-slate-700">@{domain}</span> isn't linked to an active FoundFolio campus yet.
+        </p>
+        <p className="text-sm text-slate-500 mb-6">
+          If your institution is interested in getting set up, request a free pilot below.
         </p>
 
-        <div className="flex gap-3">
+        <div className="space-y-2.5">
+          <Link
+            to="/about#pilot"
+            className="block w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold text-center transition-colors"
+          >
+            Request a pilot for your campus
+          </Link>
           <button
             onClick={signOut}
-            className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 font-medium"
+            className="w-full px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium transition-colors"
           >
-            Try another account
+            Try a different account
           </button>
-          <Link
-            to="/"
-            className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-center hover:bg-slate-50 font-medium"
-          >
-            Back to home
-          </Link>
         </div>
       </div>
     </div>

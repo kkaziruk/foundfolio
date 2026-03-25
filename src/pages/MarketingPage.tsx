@@ -1,34 +1,36 @@
-// src/pages/MarketingPage.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import {
-  Menu,
-  X,
   ChevronDown,
   ChevronUp,
-  Box,
-  Laptop,
+  Search,
+  Camera,
+  BarChart3,
   Shield,
-  LayoutList,
   ArrowLeftRight,
-  PieChart,
+  Bell,
+  Menu,
+  X,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const MarketingPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const pilotRef = useRef<HTMLElement>(null);
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"admin" | "manager" | "student">("manager");
+  const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
-  // Rotating word (always on line 2)
-  const words = useMemo(() => ["Unified", "Simplified", "Connected"], []);
-  const [wordIndex, setWordIndex] = useState(0);
-
-  // Tabs + FAQ (only one open at a time)
-  const [activeTab, setActiveTab] = useState<"admin" | "manager" | "student">("admin");
-  const [faqOpen, setFaqOpen] = useState<number | null>(0);
+  const [form, setForm] = useState({ name: "", email: "", university: "", locations: "", notes: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -37,444 +39,384 @@ const MarketingPage = () => {
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setWordIndex((i) => (i + 1) % words.length);
-    }, 2200);
-    return () => clearInterval(interval);
-  }, [words.length]);
+    if (window.location.hash === "#pilot") {
+      setTimeout(() => pilotRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    }
+  }, []);
 
-  const rotatingWord = words[wordIndex];
+  const goToApp = () => navigate(user ? "/app" : "/login");
 
-  const goToProduct = () => {
-    if (authLoading) return;
-    navigate(user ? "/app" : "/login");
+  const scrollToPilot = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    pilotRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const PrimaryNavButton = () => {
-    const label = authLoading ? "Loading..." : user ? "Open FoundFolio" : "Log in";
-    return (
-      <button
-        onClick={goToProduct}
-        disabled={authLoading}
-        className="px-4 py-2 rounded-lg font-semibold border border-gray-300 text-[#212529] hover:bg-gray-50 disabled:opacity-60 disabled:hover:bg-transparent"
-      >
-        {label}
-      </button>
-    );
-  };
-
-  const PrimaryMobileButton = () => {
-    const label = authLoading ? "Loading..." : user ? "Open FoundFolio" : "Log in";
-    return (
-      <button
-        onClick={() => {
-          setMobileMenuOpen(false);
-          goToProduct();
-        }}
-        disabled={authLoading}
-        className="w-full px-4 py-2 rounded-lg font-semibold border border-gray-300 text-[#212529] hover:bg-gray-50 disabled:opacity-60 disabled:hover:bg-transparent"
-      >
-        {label}
-      </button>
-    );
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.email || !form.university) {
+      setFormError("Please fill in your name, email, and university.");
+      return;
+    }
+    setSubmitting(true);
+    setFormError("");
+    try {
+      const { error } = await supabase.from("campus_requests").insert({
+        contact_name: form.name.trim(),
+        contact_email: form.email.trim().toLowerCase(),
+        university_name: form.university.trim(),
+        location_count: form.locations.trim() || null,
+        notes: form.notes.trim() || null,
+      });
+      if (error) throw error;
+      setSubmitted(true);
+    } catch {
+      setFormError("Something went wrong. Please email us directly at hello@foundfolio.co");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const faqs = [
     {
       q: "How does FoundFolio work?",
-      a: "FoundFolio replaces paper logs and spreadsheets with a simple digital system. Staff can log items in seconds (with photos, details, and locations), and students can check online to see if their item has been found before visiting the desk.",
+      a: "Staff log found items in seconds — with a photo, description, and location. Students search the live database from their phone or laptop to see if their item has been turned in, without needing to walk over and ask.",
     },
     {
       q: "Who is FoundFolio for?",
-      a: "FoundFolio is built for student centers and campus recreation facilities or any location that manages lost items. Each building can use its own dashboard, or campuses can connect multiple locations under one central hub.",
+      a: "Any campus location that manages lost items: student centers, recreation facilities, libraries, residence halls. Buildings each have their own dashboard, and a campus admin can see everything across all locations.",
     },
     {
-      q: "Is student or item data secure?",
-      a: "Yes — FoundFolio stores all data securely in the cloud using encrypted infrastructure that meets industry security standards. Each campus has its own private dashboard accessible only to approved staff, while student-facing pages display only general item details — never personal information.",
+      q: "How do students access it?",
+      a: "Students sign in with their campus Google account at foundfolio.co/login and can immediately search what's been found across all buildings. No app download needed.",
     },
     {
-      q: "Where is the data stored?",
-      a: "All FoundFolio data is stored securely in the cloud on enterprise-grade servers located in the United States. Our infrastructure providers use encryption in transit and at rest, continuous monitoring, and rigorous data protection standards — the same level of security trusted by universities and enterprise software platforms.",
-    },
-    {
-      q: "How do students access the system?",
-      a: "Each campus gets a unique web link (e.g., foundfolio.co/youruniversity). Students can search items anytime from their phone or laptop — no login or app download needed.",
+      q: "Is student data secure?",
+      a: "Yes. All data is stored on encrypted, enterprise-grade infrastructure in the United States. Student-facing pages show only general item details — never personal information.",
     },
     {
       q: "What does the pilot include?",
-      a: "1. Free access for 30 days\n2. Setup and onboarding for your team\n3. Staff training and feedback sessions\n4. Dedicated support during the trial",
+      a: "Free 30-day access, full setup and onboarding for your team, staff training, and dedicated support throughout the trial.",
     },
     {
-      q: "How long does it take to get started?",
-      a: "Once we confirm your pilot, your dashboard can be live the next day.",
-    },
-    {
-      q: "How does this help sustainability goals?",
-      a: "FoundFolio helps reduce the number of unclaimed items that end up discarded. We provide reports on recovered items and reuse rates — great for campus sustainability metrics.",
-    },
-    {
-      q: "Can multiple departments use FoundFolio?",
-      a: "Yes — campuses can link multiple buildings under one central system. Each department manages its own items, but administrators can view overall data across all locations.",
-    },
-    {
-      q: "What kind of support is included?",
-      a: "During the pilot, we offer personalized onboarding, email support, and live check-ins. After the pilot, premium tiers include ongoing customer success and quarterly reviews.",
-    },
-    {
-      q: "What happens after the pilot?",
-      a: "At the end of the pilot, we’ll share a summary of your center’s performance (items logged, recovery rates, etc.) and a short feedback session to decide if you’d like to continue as a FoundFolio partner.",
+      q: "How quickly can we get started?",
+      a: "Submit a request today and your dashboard can be live the next business day.",
     },
   ];
 
+  const steps = [
+    {
+      num: "1",
+      icon: <Camera className="w-6 h-6 text-blue-500" />,
+      title: "Log it in seconds",
+      desc: "Staff photograph and describe found items right from their phone. AI assists with categorization and descriptions.",
+    },
+    {
+      num: "2",
+      icon: <Search className="w-6 h-6 text-blue-500" />,
+      title: "Students search anywhere",
+      desc: "Students check what's been found before making a trip to the desk. Search by color, type, location, or description.",
+    },
+    {
+      num: "3",
+      icon: <BarChart3 className="w-6 h-6 text-blue-500" />,
+      title: "Admins track everything",
+      desc: "Campus-wide dashboards, recovery analytics, hold-period alerts, and cross-building item transfers — all in one place.",
+    },
+  ];
+
+  const features = [
+    { icon: <Camera className="w-5 h-5" />, title: "Photo logging with AI", desc: "Log items with a photo in seconds. AI suggests descriptions to keep your records consistent." },
+    { icon: <Search className="w-5 h-5" />, title: "Student-facing search", desc: "A clean, searchable page students can check from anywhere — no staff time required to answer calls." },
+    { icon: <Shield className="w-5 h-5" />, title: "High-value item alerts", desc: "Automatic alerts for electronics, wallets, IDs, and keys to help staff meet safety requirements." },
+    { icon: <BarChart3 className="w-5 h-5" />, title: "Live analytics", desc: "Track recovery rates, hold periods, and campus-wide trends. Generate reports in one click." },
+    { icon: <ArrowLeftRight className="w-5 h-5" />, title: "Inter-building transfers", desc: "Move items between locations without duplicate entries. The full chain of custody stays intact." },
+    { icon: <Bell className="w-5 h-5" />, title: "\"Found it\" reports", desc: "Students submit potential matches directly. Staff review and confirm from their dashboard." },
+  ];
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* NAV */}
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 bg-white transition-shadow ${
-          scrolled ? "shadow-md" : ""
-        }`}
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <img src="/found_folio_(6).png" alt="FoundFolio" className="h-10 w-auto" />
-            </div>
+    <div className="min-h-screen bg-white" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+
+      {/* ── NAV ── */}
+      <nav className={`fixed top-0 inset-x-0 z-50 bg-white transition-shadow ${scrolled ? "shadow-sm border-b border-slate-100" : ""}`}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/about" className="flex items-center gap-2.5">
+              <img src="/found_folio_(6).png" alt="FoundFolio" className="h-9 w-auto" />
+            </Link>
 
             <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-[#212529] hover:text-[#2D3748] font-semibold">
-                Features
-              </a>
-              <a href="#faq" className="text-[#212529] hover:text-[#2D3748] font-semibold">
-                FAQ
-              </a>
-              <PrimaryNavButton />
+              <a href="#how" onClick={(e) => { e.preventDefault(); document.getElementById("how")?.scrollIntoView({ behavior: "smooth" }); }} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">How it works</a>
+              <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Features</a>
+              <a href="#faq" onClick={(e) => { e.preventDefault(); document.getElementById("faq")?.scrollIntoView({ behavior: "smooth" }); }} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">FAQ</a>
+              <button onClick={goToApp} disabled={authLoading} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50">
+                {authLoading ? "..." : user ? "Open app" : "Log in"}
+              </button>
+              <button onClick={scrollToPilot} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                Request a pilot
+              </button>
             </div>
 
-            <button
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            <button className="md:hidden p-2 -mr-2" onClick={() => setMobileMenuOpen(v => !v)}>
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
+        </div>
 
-          {mobileMenuOpen && (
-            <div className="md:hidden pb-4 space-y-3">
-              <a
-                href="#features"
-                className="block text-[#212529] font-semibold"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Features
-              </a>
-              <a
-                href="#roles"
-                className="block text-[#212529] font-semibold"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Roles
-              </a>
-              <a
-                href="#faq"
-                className="block text-[#212529] font-semibold"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                FAQ
-              </a>
-              <PrimaryMobileButton />
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-100 bg-white px-4 py-4 space-y-3">
+            <a href="#how" className="block text-sm font-medium text-slate-700" onClick={e => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById("how")?.scrollIntoView({ behavior: "smooth" }); }}>How it works</a>
+            <a href="#features" className="block text-sm font-medium text-slate-700" onClick={e => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }}>Features</a>
+            <a href="#faq" className="block text-sm font-medium text-slate-700" onClick={e => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById("faq")?.scrollIntoView({ behavior: "smooth" }); }}>FAQ</a>
+            <button onClick={goToApp} disabled={authLoading} className="block w-full text-left text-sm font-medium text-slate-700 disabled:opacity-50">
+              {authLoading ? "..." : user ? "Open app" : "Log in"}
+            </button>
+            <button onClick={scrollToPilot} className="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg">
+              Request a pilot
+            </button>
+          </div>
+        )}
+      </nav>
+
+      {/* ── HERO ── */}
+      <section className="pt-32 pb-20 px-4 bg-slate-50">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full text-xs font-semibold text-blue-700 mb-6">
+            Running at Notre Dame · Saint Mary's · Holy Cross
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight tracking-tight">
+            Campus lost & found,<br />
+            <span className="text-blue-600">finally digital.</span>
+          </h1>
+          <p className="mt-6 text-lg md:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            FoundFolio replaces paper logs and spreadsheets with a searchable, trackable system your students and staff will actually use.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={scrollToPilot}
+              className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors inline-flex items-center justify-center gap-2"
+            >
+              Request a free pilot <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={goToApp}
+              disabled={authLoading}
+              className="w-full sm:w-auto px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+            >
+              {user ? "Open FoundFolio" : "Log in"}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="how" className="py-20 px-4 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">How it works</h2>
+            <p className="mt-3 text-slate-500 text-lg">Three steps. No training required.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {steps.map((step) => (
+              <div key={step.num} className="relative">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    {step.icon}
+                  </div>
+                  <span className="text-3xl font-black text-slate-100 select-none">{step.num}</span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{step.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── ROLE DEMOS ── */}
+      <section id="demo" className="py-20 px-4 bg-slate-50">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">See it in action</h2>
+            <p className="mt-3 text-slate-500 text-lg">Different views for every role on campus.</p>
+          </div>
+
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 gap-1">
+              {([ { key: "manager", label: "Building Manager" }, { key: "admin", label: "Campus Admin" }, { key: "student", label: "Student" } ] as const).map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === t.key ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {activeTab === "manager" && (
+            <div>
+              <p className="text-center text-slate-600 text-base mb-5 max-w-xl mx-auto">Log items in seconds, keep your location organized, and route high-value items safely.</p>
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                <img src="/manager.png" alt="Building Manager dashboard" className="w-full h-auto object-contain max-h-[520px] object-center" loading="lazy" />
+              </div>
+            </div>
+          )}
+          {activeTab === "admin" && (
+            <div>
+              <p className="text-center text-slate-600 text-base mb-5 max-w-xl mx-auto">Centralized dashboards, analytics, and cross-building controls across your whole campus.</p>
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                <img src="/admin.png" alt="Campus Admin dashboard" className="w-full h-auto object-contain max-h-[520px] object-center" loading="lazy" />
+              </div>
+            </div>
+          )}
+          {activeTab === "student" && (
+            <div>
+              <p className="text-center text-slate-600 text-base mb-5 max-w-xl mx-auto">Students search what's been found before making an unnecessary trip to the desk.</p>
+              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                <img src="/student.png" alt="Student search experience" className="w-full h-auto object-contain max-h-[520px] object-center" loading="lazy" />
+              </div>
             </div>
           )}
         </div>
-      </nav>
-
-      {/* HERO */}
-<section className="pt-24 pb-10" style={{ backgroundColor: "#FAFAFA" }}>
-  <div className="max-w-6xl mx-auto px-4 sm:px-6">
-    <div className="grid md:grid-cols-2 gap-10 items-center">
-      <div className="text-center md:text-left">
-        <h1
-          className="font-semibold leading-tight"
-          style={{
-            fontFamily:
-              "Poppins, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-            color: "#2D3748",
-          }}
-        >
-          {/* FIRST LINE — locked to one line */}
-          <span className="block text-4xl md:text-5xl whitespace-normal md:whitespace-nowrap break-words">
-            Campus Lost and Found
-          </span>
-
-          {/* SECOND LINE — rotating word */}
-          <span className="block mt-2 min-h-[1.2em] text-4xl md:text-5xl text-[#3B82F6]">
-            <span
-              key={rotatingWord}
-              className="inline-block animate-fade"
-            >
-              {rotatingWord}
-            </span>
-          </span>
-        </h1>
-
-              <p className="mt-4 text-[16px] leading-[24px] text-[#212529] md:max-w-xl">
-                 Transform lost and found into a unified searchable digital system that your students and staff will love.
-              </p>
-
-              <div className="mt-6 flex justify-center md:justify-start">
-                <button
-                  onClick={goToProduct}
-                  disabled={authLoading}
-                  className="px-5 py-3 rounded-lg font-semibold border border-gray-300 text-[#212529] hover:bg-white disabled:opacity-60"
-                >
-                  {authLoading ? "Loading..." : user ? "Open FoundFolio" : "Log in"}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-center md:justify-end">
-              <img
-                src="/screenshot_2025-11-08_at_1.53.00_pm.png"
-                alt="FoundFolio illustration"
-                className="w-full max-w-md h-auto"
-              />
-            </div>
-          </div>
-        </div>
       </section>
 
-      {/* FEATURES */}
-      <section id="features" className="py-14 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center">
-            <h2
-              style={{ fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", fontWeight: 600, color: "#000" }}
-              className="text-[34px] leading-tight"
-            >
-              Managing Lost Items Just Got Easier
-            </h2>
-            <p className="mt-3 text-[18px] leading-[28px] text-[#2D3748] max-w-2xl mx-auto">
-              FoundFolio helps universities save time, reduce waste, and create a better student
-              experience — all in one simple platform.
-            </p>
+      {/* ── FEATURES ── */}
+      <section id="features" className="py-20 px-4 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">Everything you need. Nothing you don't.</h2>
           </div>
-
-          <div className="mt-10 grid gap-8 md:grid-cols-2">
-            <div className="flex gap-4 items-start">
-              <div className="mt-1">
-                <Box className="w-10 h-10 text-[#2F6B7C]" />
-              </div>
-              <div>
-                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
-                  Log and Track with AI
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f, i) => (
+              <div key={i} className="p-5 rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 mb-4">
+                  {f.icon}
                 </div>
-                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
-                  Use AI to log lost item in seconds while keeping everything organized in one searchable system.
-                </p>
+                <h3 className="font-semibold text-slate-900 mb-1.5">{f.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
               </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="mt-1">
-                <Laptop className="w-10 h-10 text-[#E3B15A]" />
-              </div>
-              <div>
-                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
-                  Students Search From Anywhere
-                </div>
-                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
-                  Make it easy for students to see what&apos;s lost before going to the desk.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="mt-1">
-                <Shield className="w-10 h-10 text-[#2E6AA8]" />
-              </div>
-              <div>
-                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
-                  Automatic High Value Item Alerts
-                </div>
-                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
-                  Built-in alerts to help staff meet safety requirements for high value items.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="mt-1">
-                <LayoutList className="w-10 h-10 text-[#2F6B7C]" />
-              </div>
-              <div>
-                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
-                  Campus-Wide Dashboard
-                </div>
-                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
-                  Admins can view all logged items across campus buildings in one place.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="mt-1">
-                <ArrowLeftRight className="w-10 h-10 text-[#E3B15A]" />
-              </div>
-              <div>
-                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
-                  Transfer Logged Items
-                </div>
-                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
-                  Move logged items to another location&apos;s portal without creating duplicate entries.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="mt-1">
-                <PieChart className="w-10 h-10 text-[#2E6AA8]" />
-              </div>
-              <div>
-                <div style={{ fontFamily: "Poppins, system-ui", fontWeight: 600, color: "#2D3748" }} className="text-[22px]">
-                  Live Analytics & Reports
-                </div>
-                <p className="mt-2 text-[16px] leading-[24px] text-[#212529]">
-                  View live statistics and create custom reports on item recovery rates.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ROLES */}
-      <section id="roles" className="py-10 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex justify-center border-b border-gray-200">
-            {(
-              [
-                { key: "admin", label: "Admin View" },
-                { key: "manager", label: "Building Manager View" },
-                { key: "student", label: "Student View" },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`px-5 py-3 font-semibold ${
-                  activeTab === t.key
-                    ? "text-[#2D3748] border-b-4 border-[#2E6AA8]"
-                    : "text-gray-500"
-                }`}
-              >
-                {t.label}
-              </button>
             ))}
           </div>
-
-          {activeTab === "admin" && (
-  <>
-    {/* Headline copy (NOT redundant h3) */}
-    <p
-      className="mt-2 max-w-lg mx-auto text-center text-[18px] sm:text-[20px] leading-[28px] font-medium text-[#1f3a5f]"
-      style={{ fontFamily: "Poppins, system-ui" }}
-    >
-      Centralized dashboards, analytics, and cross-building controls.
-    </p>
-
-    {/* Screenshot with hover zoom */}
-    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
-      <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.40]">
-        <img
-          src="/admin.png"
-          alt="FoundFolio admin dashboard"
-          className="mx-auto w-full max-w-[980px] h-auto max-h-[520px] object-contain object-center"
-          loading="lazy"
-        />
-      </div>
-    </div>
-  </>
-)}
-
-{activeTab === "manager" && (
-  <>
-    <p
-      className="mt-2 max-w-xl mx-auto text-center text-[18px] sm:text-[20px] leading-[28px] font-medium text-[#1f3a5f]"
-      style={{ fontFamily: "Poppins, system-ui" }}
-    >
-      Log items in seconds, keep your location organized, and route high-value items safely.
-    </p>
-
-    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
-      <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.20]">
-        <img
-          src="/manager.png"
-          alt="FoundFolio building manager dashboard"
-          className="mx-auto w-full max-w-[1100px] h-auto max-h-[520px] object-contain object-center"
-          loading="lazy"
-        />
-      </div>
-    </div>
-  </>
-)}
-
-{activeTab === "student" && (
-  <>
-    <p
-      className="mt-2 max-w-xl mx-auto text-center text-[18px] sm:text-[20px] leading-[28px] font-medium text-[#1f3a5f]"
-      style={{ fontFamily: "Poppins, system-ui" }}
-    >
-      Search campus items from anywhere and avoid unnecessary trips.
-    </p>
-
-    <div className="group mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-[#f7f8fa] shadow-sm transition-shadow duration-300 hover:shadow-md">
-      <div className="transition-transform duration-300 ease-out md:group-hover:scale-[1.10]">
-        <img
-          src="/student.png"
-          alt="FoundFolio student search experience"
-          className="mx-auto w-full max-w-[1100px] h-auto max-h-[520px] object-contain object-center"
-          loading="lazy"
-        />
-      </div>
-    </div>
-  </>
-)}
-
-
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="py-14 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <h2
-            style={{ fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", fontWeight: 600, color: "#2D3748" }}
-            className="text-[28px] mb-6"
-          >
-            Frequently Asked Questions
-          </h2>
+      {/* ── PILOT REQUEST FORM ── */}
+      <section ref={pilotRef} id="pilot" className="py-20 px-4 bg-slate-900">
+        <div className="max-w-xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Ready to modernize your lost & found?</h2>
+            <p className="mt-3 text-slate-400 text-lg">Start a free 30-day pilot — setup takes one business day.</p>
+          </div>
 
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
+          {submitted ? (
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-8 text-center">
+              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <Check className="w-6 h-6 text-green-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Request received!</h3>
+              <p className="text-slate-400 text-sm">We'll be in touch within one business day to get your campus set up.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 md:p-8 space-y-4">
+              {formError && (
+                <div className="px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+                  {formError}
+                </div>
+              )}
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Your name <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Jane Smith"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Work email <span className="text-red-400">*</span></label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="jane@university.edu"
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">University / institution <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={form.university}
+                  onChange={e => setForm(f => ({ ...f, university: e.target.value }))}
+                  placeholder="University of Notre Dame"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Number of buildings / locations</label>
+                <input
+                  type="text"
+                  value={form.locations}
+                  onChange={e => setForm(f => ({ ...f, locations: e.target.value }))}
+                  placeholder="e.g. 3 buildings, 1 main desk"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Anything else? (optional)</label>
+                <textarea
+                  value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Tell us about your current process, timeline, or any questions..."
+                  rows={3}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold rounded-xl text-sm transition-colors inline-flex items-center justify-center gap-2"
+              >
+                {submitting ? "Sending..." : <>Request pilot <ArrowRight className="w-4 h-4" /></>}
+              </button>
+
+              <p className="text-xs text-slate-400 text-center">No credit card. No commitment. We'll reach out within one business day.</p>
+            </form>
+          )}
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section id="faq" className="py-20 px-4 bg-white">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold text-slate-900 mb-8 text-center tracking-tight">Common questions</h2>
+          <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-200">
             {faqs.map((faq, idx) => {
               const open = faqOpen === idx;
               return (
-                <div key={idx} className="border-b border-gray-200 last:border-b-0">
+                <div key={idx}>
                   <button
                     onClick={() => setFaqOpen(open ? null : idx)}
-                    className="w-full flex items-center justify-between gap-6 px-6 py-5 text-left hover:bg-gray-50"
+                    className="w-full flex items-center justify-between gap-6 px-6 py-5 text-left hover:bg-slate-50 transition-colors"
                   >
-                    <span className="text-[18px] font-semibold text-[#2D3748]">{faq.q}</span>
-                    {open ? (
-                      <ChevronUp className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-500" />
-                    )}
+                    <span className="font-semibold text-slate-900 text-sm leading-snug">{faq.q}</span>
+                    {open ? <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />}
                   </button>
-
                   {open && (
-                    <div className="px-6 pb-6 text-[16px] leading-[24px] text-[#212529] whitespace-pre-line">
-                      {faq.a}
-                    </div>
+                    <div className="px-6 pb-5 text-sm text-slate-600 leading-relaxed">{faq.a}</div>
                   )}
                 </div>
               );
@@ -483,14 +425,16 @@ const MarketingPage = () => {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="py-10 bg-white border-t border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-500">© {new Date().getFullYear()} FoundFolio</div>
-          <div className="text-sm text-gray-500">
-            <button onClick={goToProduct} className="underline hover:text-gray-700">
-              {user ? "Open FoundFolio" : "Log in"}
-            </button>
+      {/* ── FOOTER ── */}
+      <footer className="py-10 px-4 border-t border-slate-100 bg-white">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <img src="/found_folio_(6).png" alt="FoundFolio" className="h-7 w-auto opacity-70" />
+            <span className="text-sm text-slate-400">© {new Date().getFullYear()} FoundFolio</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm text-slate-400">
+            <button onClick={scrollToPilot} className="hover:text-slate-700 transition-colors">Request a pilot</button>
+            <button onClick={goToApp} className="hover:text-slate-700 transition-colors">{user ? "Open app" : "Log in"}</button>
           </div>
         </div>
       </footer>
