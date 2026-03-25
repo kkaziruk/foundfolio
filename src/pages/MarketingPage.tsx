@@ -181,9 +181,6 @@ const MarketingPage = () => {
       {/* ── HERO ── */}
       <section className="pt-32 pb-20 px-4 bg-slate-50">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full text-xs font-semibold text-blue-700 mb-6">
-            Running at Notre Dame · Saint Mary's · Holy Cross
-          </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight tracking-tight">
             Campus lost & found,<br />
             <span className="text-blue-600">finally digital.</span>
