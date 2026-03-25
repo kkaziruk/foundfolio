@@ -56,6 +56,7 @@ export default function LoginPage() {
       <main className="min-h-screen flex flex-col items-center justify-center px-4">
         {/* Header copy (tight, calm) */}
         <div className="mx-auto max-w-xl text-center mb-6">
+          <img src="/found_folio_(6).png" alt="FoundFolio" className="h-14 w-auto mx-auto mb-4" />
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
             Find or log an item
           </h1>
