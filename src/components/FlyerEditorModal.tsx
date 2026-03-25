@@ -94,6 +94,8 @@ function generateFlyerHtml(
     html, body {
       width: 100%; background: #e2e8f0;
       font-family: ${fontFamily};
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     body {
       display: flex; flex-direction: column;
