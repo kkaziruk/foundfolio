@@ -88,7 +88,7 @@ export default function LoginPage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-900 text-sm">Search for lost item</div>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Search everything found across campus
+                      Browse items found across campus and claim what's yours
                     </p>
                   </div>
                   <span className="text-slate-300 group-hover:text-slate-400 transition-colors text-lg">→</span>
