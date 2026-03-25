@@ -672,7 +672,8 @@ export default function AdminPage() {
 
                   {/* Shareable student URL + QR code */}
                   {(() => {
-                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}&bgcolor=ffffff&color=0f172a&margin=2`;
+                    const flyerUrl = "https://www.foundfolio.co/login";
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(flyerUrl)}&bgcolor=ffffff&color=0f172a&margin=2`;
                     return (
                       <div className="bg-white rounded-xl border border-slate-200 p-5" style={{ boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.04)" }}>
                         <div className="flex items-center gap-2 mb-4">
@@ -689,10 +690,10 @@ export default function AdminPage() {
                           {/* URL + copy */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200 px-3 py-2">
-                              <span className="text-xs text-slate-600 font-mono truncate flex-1">{shareUrl}</span>
+                              <span className="text-xs text-slate-600 font-mono truncate flex-1">foundfolio.co/login</span>
                               <button
                                 onClick={() => {
-                                  navigator.clipboard.writeText(shareUrl).then(() => {
+                                  navigator.clipboard.writeText(flyerUrl).then(() => {
                                     setCopiedLink(true);
                                     setTimeout(() => setCopiedLink(false), 2000);
                                   });
