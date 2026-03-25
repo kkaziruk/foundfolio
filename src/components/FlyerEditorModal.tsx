@@ -77,6 +77,7 @@ function generateFlyerHtml(
   font: typeof FONTS[0],
   buildingLine: string,
   logoUrl: string,
+  preview = false,
 ): string {
   const qrHiRes = `https://api.qrserver.com/v1/create-qr-code/?size=700x700&data=${encodeURIComponent(FLYER_URL)}&bgcolor=ffffff&color=0f172a&margin=1`;
   const fontFamily = `'${config.font}', -apple-system, BlinkMacSystemFont, sans-serif`;
@@ -92,17 +93,16 @@ function generateFlyerHtml(
     ${fontImport}
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
-      width: 100%; background: #e2e8f0;
+      width: 100%; background: ${preview ? "white" : "#e2e8f0"};
       font-family: ${fontFamily};
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     body {
       display: flex; flex-direction: column;
-      align-items: center; padding: 32px 20px 48px;
+      align-items: center; padding: ${preview ? "0" : "32px 20px 48px"};
     }
-    .print-bar {
-      display: flex; align-items: center; justify-content: space-between;
+    .print-bar { display: ${preview ? "none" : "flex"}; align-items: center; justify-content: space-between;
       width: 100%; max-width: 520px; margin-bottom: 24px;
     }
     .print-bar p { font-size: 13px; color: #64748b; }
@@ -114,11 +114,11 @@ function generateFlyerHtml(
     }
     .print-btn:hover { opacity: 0.82; }
     .flyer {
-      width: 100%; max-width: 520px;
+      width: 100%; max-width: ${preview ? "100%" : "520px"};
       background: white;
-      border-radius: 20px;
+      border-radius: ${preview ? "0" : "20px"};
       overflow: hidden;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+      box-shadow: ${preview ? "none" : "0 8px 40px rgba(0,0,0,0.18)"};
     }
     .header {
       background: ${theme.headerBg};
@@ -253,15 +253,16 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
   const theme = THEMES.find(t => t.id === config.theme) ?? THEMES[0];
   const font = FONTS.find(f => f.id === config.font) ?? FONTS[0];
 
-  const flyerHtml = useMemo(
-    () => generateFlyerHtml(config, theme, font, buildingLine, logoUrl),
+  const previewHtml = useMemo(
+    () => generateFlyerHtml(config, theme, font, buildingLine, logoUrl, true),
     [config, theme, font, buildingLine, logoUrl],
   );
 
   const handlePrint = () => {
+    const printHtml = generateFlyerHtml(config, theme, font, buildingLine, logoUrl, false);
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(flyerHtml);
+    win.document.write(printHtml);
     win.document.close();
     setTimeout(() => win.print(), 800);
   };
@@ -394,10 +395,10 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
         <p className="text-xs text-slate-400 mb-4 font-medium tracking-wide uppercase">Live preview</p>
         <div className="w-full max-w-lg">
           <iframe
-            srcDoc={flyerHtml}
+            srcDoc={previewHtml}
             title="Flyer preview"
-            className="w-full rounded-2xl bg-white"
-            style={{ height: "700px", border: "none", boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}
+            className="w-full bg-white"
+            style={{ height: "860px", border: "none", display: "block" }}
             sandbox="allow-same-origin"
           />
         </div>
