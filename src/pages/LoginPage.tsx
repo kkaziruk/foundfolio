@@ -57,7 +57,7 @@ export default function LoginPage() {
         {/* Header copy (tight, calm) */}
         <div className="mx-auto max-w-xl text-center mb-6">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
-            Log in to FoundFolio
+            Find or log an item
           </h1>
           <p className="mt-3 text-sm md:text-base text-slate-600">
             Choose how you're using FoundFolio
