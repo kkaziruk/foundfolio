@@ -121,20 +121,19 @@ export default function LoginPage() {
               Secure sign in · Campus access only
             </p>
 
-            <div className="mt-4 text-center flex items-center justify-center gap-4">
-              <Link
-                to="/about"
-                className="text-sm text-slate-400 hover:text-slate-700 transition-colors"
-              >
-                About FoundFolio
-              </Link>
-              <span className="text-slate-200">·</span>
-              <Link
-                to="/about#pilot"
-                className="text-sm text-blue-500 hover:text-blue-700 font-medium transition-colors"
-              >
-                Request a pilot
-              </Link>
+            <div className="mt-4 text-center space-y-1.5">
+              <p className="text-xs text-slate-400">
+                New here?{" "}
+                <Link to="/about" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
+                  Learn how it works
+                </Link>
+              </p>
+              <p className="text-xs text-slate-400">
+                Run lost &amp; found?{" "}
+                <Link to="/about#pilot" className="text-blue-500 hover:text-blue-700 font-medium transition-colors">
+                  Request access
+                </Link>
+              </p>
             </div>
           </div>
         </div>
