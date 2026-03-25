@@ -764,6 +764,10 @@ export default function AdminPage() {
                   campus={campus}
                   campusName={campusName}
                   onBuildingsChange={fetchBuildings}
+                  onSelectBuilding={(buildingId) => {
+                    setSelectedBuildingId(buildingId);
+                    setAdminView("analytics");
+                  }}
                 />
               )}
 

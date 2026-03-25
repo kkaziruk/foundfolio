@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Building2, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Building2, Clock, AlertCircle, CheckCircle2, ChevronRight } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import BuildingSettings from "./BuildingSettings";
 
@@ -7,6 +7,7 @@ interface BuildingsManagerProps {
   campus: string;
   campusName: string;
   onBuildingsChange?: () => void;
+  onSelectBuilding?: (buildingId: string) => void;
 }
 
 interface Building {
@@ -18,7 +19,7 @@ interface Building {
   claim_hours?: string | null;
 }
 
-function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsManagerProps) {
+function BuildingsManager({ campus, campusName, onBuildingsChange, onSelectBuilding }: BuildingsManagerProps) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [newBuildingName, setNewBuildingName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -191,32 +192,43 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
                 key={building.id}
                 className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors"
               >
-                {/* Building icon */}
-                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                  <Building2 className="w-4 h-4 text-slate-400" />
-                </div>
+                {/* Clickable left area: icon + name + hours */}
+                <button
+                  onClick={() => onSelectBuilding?.(building.id)}
+                  disabled={!onSelectBuilding}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left group disabled:cursor-default"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 transition-colors">
+                    <Building2 className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                  </div>
 
-                {/* Name + hours */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900 truncate">{building.name}</span>
-                    {building.is_system && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 flex-shrink-0">
-                        System
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                        {building.name}
                       </span>
-                    )}
+                      {building.is_system && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 flex-shrink-0">
+                          System
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Clock className="w-3 h-3 text-slate-300 flex-shrink-0" />
+                      {building.claim_hours ? (
+                        <span className="text-xs text-slate-500 truncate">{building.claim_hours}</span>
+                      ) : (
+                        <span className="text-xs text-amber-500">No hours set</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <Clock className="w-3 h-3 text-slate-300 flex-shrink-0" />
-                    {building.claim_hours ? (
-                      <span className="text-xs text-slate-500 truncate">{building.claim_hours}</span>
-                    ) : (
-                      <span className="text-xs text-amber-500">No hours set</span>
-                    )}
-                  </div>
-                </div>
 
-                {/* Actions */}
+                  {onSelectBuilding && (
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+                  )}
+                </button>
+
+                {/* Action buttons (separate from the nav click) */}
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {!building.is_system && (
                     <>
