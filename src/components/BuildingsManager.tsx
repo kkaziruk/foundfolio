@@ -123,7 +123,7 @@ function BuildingsManager({ campus, campusName, onBuildingsChange }: BuildingsMa
             <Building2 className="w-4 h-4 text-slate-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-900">Manage buildings</p>
+            <p className="text-sm font-bold text-slate-900">Manage Buildings</p>
             <p className="text-xs text-slate-500">{campusName}</p>
           </div>
         </div>
