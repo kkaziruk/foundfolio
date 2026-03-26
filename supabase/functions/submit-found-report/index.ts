@@ -29,33 +29,30 @@ Return ONLY raw JSON — no markdown, no backticks:
 
 DESCRIPTION
 - 5–10 words describing physical appearance: color, material, shape, brand if clearly visible.
-- Never include names, ID numbers, or personal identifiers even if visible in the photo.
-- Example: "Blue hard-shell laptop case with stickers"
+- Never include names, ID numbers, or personal identifiers.
 
 CATEGORY
 - category_name MUST match one of the allowed categories exactly.
 - If none clearly apply, use "Other / Unclassified".
 
 SENSITIVE — set sensitive_detected = true ONLY if the item itself IS one of:
-- A government-issued ID: driver's license, passport, or state ID card
-- A university or employee ID card
-- A financial card: credit card or debit card
-- A building access badge or key card
-- A Social Security card or similar official personal document
-Do NOT flag as sensitive:
-- Items that merely have a barcode, QR code, or product label (water bottles, books, food containers)
-- Items with a name written or printed on them (e.g. a labeled bottle or personalized item)
-- Loyalty cards, gift cards, library cards, or transit passes
-- Bags, wallets, or cases that may contain cards inside — only flag if an ID or financial card is visibly exposed
+- Government-issued ID (driver's license, passport, state ID)
+- University or employee ID card
+- Credit/debit card
+- Building access badge or key card
+- Social Security card or similar official document
+Do NOT flag as sensitive for barcodes, QR codes, labels, names on items, or containers.
 
 HIGH VALUE — set high_value_detected = true for:
-- Electronics: phones, laptops, tablets, earbuds, headphones, cameras
-- Wallets and purses
-- Jewelry and watches
+- Electronics (phones, laptops, tablets, headphones, cameras)
+- Wallets, purses
+- Jewelry, watches
 - Car keys or key fobs
-- Any item clearly worth $50 or more
+- Items clearly worth $50+
 
-OUTPUT: Raw JSON only. No markdown. No explanation.`;
+OUTPUT: Raw JSON only.`;
+
+const normalize = (s: string) => s.trim().toLowerCase();
 
 async function enrichWithAI(
   reportId: string,
@@ -82,11 +79,16 @@ async function enrichWithAI(
   const names = (categories as CategoryRow[]).map((c) => c.name);
   const OTHER = "Other / Unclassified";
 
+  // ---- OpenAI call with timeout ----
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
+    signal: controller.signal,
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${openaiApiKey}`,
+      Authorization: `Bearer ${openaiApiKey}`,
     },
     body: JSON.stringify({
       model: "gpt-4o-mini",
@@ -105,6 +107,8 @@ async function enrichWithAI(
     }),
   });
 
+  clearTimeout(timeout);
+
   if (!resp.ok) {
     console.error("OpenAI error:", await resp.text());
     return;
@@ -121,22 +125,45 @@ async function enrichWithAI(
     return;
   }
 
-  const proposedCategory = (parsed.category_name ?? "").trim();
-  const categoryRow = (categories as CategoryRow[]).find((c) => c.name === proposedCategory);
+  // ---- STRICT VALIDATION ----
+  const safe = {
+    description: typeof parsed.description === "string" ? parsed.description : "",
+    category_name: typeof parsed.category_name === "string" ? parsed.category_name : "",
+    high_value_detected: parsed.high_value_detected === true,
+    sensitive_detected: parsed.sensitive_detected === true,
+  };
+
+  // ---- CLEAN DESCRIPTION ----
+  let description = safe.description.split(" ").slice(0, 12).join(" ").trim();
+  if (!description || description.length < 5) {
+    console.warn("Bad AI description, using fallback");
+    description = "Unidentified found item";
+  }
+
+  // ---- CATEGORY MATCHING (ROBUST) ----
+  const categoryRow = (categories as CategoryRow[]).find(
+    (c) => normalize(c.name) === normalize(safe.category_name)
+  );
+
+  if (!categoryRow) {
+    console.warn("Invalid AI category:", safe.category_name);
+  }
+
   const finalCategory = categoryRow
-    ? proposedCategory
+    ? categoryRow.name
     : names.includes(OTHER)
     ? OTHER
     : names[0];
+
   const finalRow = (categories as CategoryRow[]).find((c) => c.name === finalCategory);
 
   await adminClient
     .from("found_item_reports")
     .update({
-      ai_description: (parsed.description ?? "").trim() || null,
+      ai_description: description || null,
       ai_category: finalCategory || null,
-      ai_high_value: (finalRow?.is_high_value || parsed.high_value_detected) === true,
-      ai_sensitive: (finalRow?.is_sensitive || parsed.sensitive_detected) === true,
+      ai_high_value: (finalRow?.is_high_value || safe.high_value_detected) === true,
+      ai_sensitive: (finalRow?.is_sensitive || safe.sensitive_detected) === true,
     })
     .eq("id", reportId);
 }

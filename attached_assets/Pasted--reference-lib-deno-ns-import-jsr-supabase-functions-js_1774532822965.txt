@@ -38,7 +38,7 @@ CATEGORY
 - If none clearly apply, use "Other / Unclassified".
 
 SENSITIVE — set sensitive_detected = true ONLY if the item itself IS one of:
-- Government-issued ID (driver's license, passport, state ID)
+- Government-issued ID (driver’s license, passport, state ID)
 - University or employee ID card
 - Credit/debit card
 - Building access badge or key card
@@ -181,10 +181,12 @@ Deno.serve(async (req: Request) => {
       ? OTHER
       : names[0];
 
-    const finalRow = categories.find((c: CategoryRow) => c.name === finalCategory)!;
+    const finalRow = categories.find((c) => c.name === finalCategory)!;
 
     // ---- FINAL FLAGS ----
     const high_value = finalRow.is_high_value || safe.high_value_detected;
+
+    // sensitive is stricter → DB OR AI, but log weird cases
     const sensitive = finalRow.is_sensitive || safe.sensitive_detected;
 
     return new Response(
