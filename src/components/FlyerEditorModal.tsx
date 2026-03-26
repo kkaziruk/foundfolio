@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { X, Printer, Type, Palette, LayoutTemplate } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { X, Printer, Type, Palette, LayoutTemplate, ExternalLink, Share2 } from "lucide-react";
 
 interface FlyerConfig {
   headline: string;
@@ -291,6 +291,16 @@ function generateFlyerHtml(
 </html>`;
 }
 
+const DEFAULT_CONFIG: FlyerConfig = {
+  headline: "Lost something?",
+  subheadline: "Scan to see if your item has been turned in to lost & found.",
+  theme: "foundfolio",
+  font: "Inter",
+  showLogo: true,
+  showUrl: true,
+  showCampusStrip: true,
+};
+
 const DEFAULT_CUSTOM: CustomColors = {
   headerBg: "#0f172a",
   stripBg: "#1d4ed8",
@@ -312,22 +322,115 @@ function customToTheme(c: CustomColors): Theme {
   };
 }
 
-export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Props) {
-  const [config, setConfig] = useState<FlyerConfig>({
-    headline: "Lost something?",
-    subheadline: "Scan to see if your item has been turned in to lost & found.",
-    theme: "foundfolio",
-    font: "Inter",
-    showLogo: true,
-    showUrl: true,
-    showCampusStrip: true,
-  });
+function openFlyerTab(theme: Theme, buildingLine: string, logoUrl: string) {
+  const html = generateFlyerHtml(DEFAULT_CONFIG, theme, FONTS[0], buildingLine, logoUrl, false);
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
 
+async function shareFlyer(theme: Theme, buildingLine: string, logoUrl: string) {
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "FoundFolio Lost & Found",
+        text: `Check if your lost item has been turned in at ${buildingLine}`,
+        url: FLYER_URL,
+      });
+      return;
+    } catch {
+      // user cancelled or share failed — fall through to open tab
+    }
+  }
+  openFlyerTab(theme, buildingLine, logoUrl);
+}
+
+// ─── Mobile sheet ────────────────────────────────────────────────────────────
+
+function MobileFlyerSheet({ buildingLine, logoUrl, onClose }: Props) {
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-slate-200 flex-shrink-0">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Flyer Options</p>
+          <p className="text-xs text-slate-500 mt-0.5">Open a style to screenshot &amp; share</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5 text-slate-500" />
+        </button>
+      </div>
+
+      {/* Theme cards */}
+      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3">
+        {THEMES.map((theme) => (
+          <div
+            key={theme.id}
+            className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
+          >
+            {/* Color bar preview */}
+            <div className="h-2 flex">
+              <div className="flex-1" style={{ background: theme.headerBg }} />
+              <div className="flex-1" style={{ background: theme.stripBg }} />
+              <div className="flex-1" style={{ background: theme.accent }} />
+            </div>
+
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Mini color swatches */}
+                <div className="flex gap-1">
+                  <div className="w-6 h-6 rounded-md" style={{ background: theme.headerBg }} />
+                  <div className="w-6 h-6 rounded-md" style={{ background: theme.stripBg }} />
+                  <div className="w-6 h-6 rounded-md" style={{ background: theme.accent }} />
+                </div>
+                <p className="text-sm font-semibold text-slate-800">{theme.label}</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Share button (native share sheet if available) */}
+                <button
+                  onClick={() => shareFlyer(theme, buildingLine, logoUrl)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Share
+                </button>
+
+                {/* Open flyer in new tab */}
+                <button
+                  onClick={() => openFlyerTab(theme, buildingLine, logoUrl)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-xs font-medium text-white hover:bg-slate-800 active:bg-black transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Open
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer note */}
+      <div className="px-5 py-4 border-t border-slate-200 bg-white flex-shrink-0">
+        <p className="text-xs text-slate-400 text-center">
+          To edit text or colors, open FoundFolio on a desktop browser
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Desktop editor ───────────────────────────────────────────────────────────
+
+function DesktopFlyerEditor({ buildingLine, logoUrl, onClose }: Props) {
+  const [config, setConfig] = useState<FlyerConfig>(DEFAULT_CONFIG);
   const [customColors, setCustomColors] = useState<CustomColors>(DEFAULT_CUSTOM);
   const [printing, setPrinting] = useState(false);
 
   const effectiveTheme: Theme = customToTheme(customColors);
-
   const font = FONTS.find(f => f.id === config.font) ?? FONTS[0];
 
   const previewHtml = useMemo(
@@ -406,7 +509,6 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Color theme</p>
             </div>
 
-            {/* Preset swatches */}
             <div className="grid grid-cols-4 gap-2 mb-4">
               {THEMES.map(t => (
                 <div key={t.id} className="flex flex-col items-center gap-1">
@@ -425,7 +527,6 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
               ))}
             </div>
 
-            {/* Color pickers — always visible */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
               {([
                 ["headerBg", "Main color"],
@@ -528,4 +629,20 @@ export default function FlyerEditorModal({ buildingLine, logoUrl, onClose }: Pro
       </div>
     </div>
   );
+}
+
+// ─── Root export ──────────────────────────────────────────────────────────────
+
+export default function FlyerEditorModal(props: Props) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  return isMobile
+    ? <MobileFlyerSheet {...props} />
+    : <DesktopFlyerEditor {...props} />;
 }
